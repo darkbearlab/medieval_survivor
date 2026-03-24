@@ -13,8 +13,10 @@ export const CONFIG = {
   },
 
   AUTO_COLLECT: {
-    TIME: 1500,  // ms to auto-collect
+    TIME: 800,   // ms to auto-collect (single nearest node only)
   },
+
+  BUILDING_GRID: 40,  // snap grid size for building placement
 
   TOWN_CENTER: {
     HP: 500,

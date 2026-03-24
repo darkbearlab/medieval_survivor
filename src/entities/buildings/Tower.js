@@ -14,7 +14,7 @@ export class Tower {
     this.damage = cfg.DAMAGE;
     this.lastAttack = 0;
 
-    this.sprite = scene.add.sprite(x, y, 'building_tower');
+    this.sprite = scene.physics.add.staticSprite(x, y, 'building_tower');
     this.sprite.setDepth(4);
     this.sprite.setData('entity', this);
 
@@ -55,7 +55,11 @@ export class Tower {
     if (this.dead) return;
     this.dead = true;
     if (this.hpBar) { this.hpBar.destroy(); this.hpBar = null; }
-    if (this.sprite.active) this.sprite.destroy();
+    if (this.scene.towersGroup) {
+      this.scene.towersGroup.remove(this.sprite, true, true);
+    } else if (this.sprite.active) {
+      this.sprite.destroy();
+    }
     const idx = this.scene.buildingSystem.towers.indexOf(this);
     if (idx !== -1) this.scene.buildingSystem.towers.splice(idx, 1);
   }

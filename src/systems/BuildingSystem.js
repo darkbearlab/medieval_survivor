@@ -33,9 +33,17 @@ export class BuildingSystem {
     this._justStarted = false;
   }
 
+  _snapToGrid(v) {
+    const g = CONFIG.BUILDING_GRID;
+    return Math.round(v / g) * g;
+  }
+
   updatePreview(worldX, worldY) {
     if (this.previewSprite) {
-      this.previewSprite.setPosition(worldX, worldY);
+      this.previewSprite.setPosition(
+        this._snapToGrid(worldX),
+        this._snapToGrid(worldY)
+      );
     }
   }
 
@@ -45,6 +53,10 @@ export class BuildingSystem {
       this._justStarted = false;
       return false;
     }
+
+    // Snap to grid
+    worldX = this._snapToGrid(worldX);
+    worldY = this._snapToGrid(worldY);
 
     const typeKey = this.placingType.toUpperCase();
     const cfg = CONFIG.BUILDINGS[typeKey];
@@ -76,6 +88,8 @@ export class BuildingSystem {
     } else if (this.placingType === 'tower') {
       const tower = new Tower(this.scene, worldX, worldY);
       this.towers.push(tower);
+      this.scene.towersGroup.add(tower.sprite);
+      tower.sprite.refreshBody();
     }
 
     return true;

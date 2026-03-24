@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
     this.enemies     = this.physics.add.group();
     this.projectiles = this.physics.add.group();
     this.wallsGroup  = this.physics.add.staticGroup();
+    this.towersGroup = this.physics.add.staticGroup();
 
     // --- Building System ---
     this.buildingSystem = new BuildingSystem(this);
@@ -98,6 +99,15 @@ export class GameScene extends Phaser.Scene {
       this.enemies,
       this.wallsGroup,
       this._onEnemyHitWall,
+      null,
+      this
+    );
+
+    // Enemies collide with towers and deal damage on contact
+    this.physics.add.collider(
+      this.enemies,
+      this.towersGroup,
+      this._onEnemyHitTower,
       null,
       this
     );
@@ -172,34 +182,38 @@ export class GameScene extends Phaser.Scene {
     const collectRange = CONFIG.RESOURCES.COLLECT_RANGE;
     const collectTime  = CONFIG.AUTO_COLLECT.TIME;
 
-    for (const node of this.resourceNodes) {
-      if (node.depleted) {
-        this._collectProgress.delete(node);
-        continue;
-      }
+    // Find the single nearest non-depleted node within range
+    let nearestNode = null;
+    let nearestDist = collectRange;
 
+    for (const node of this.resourceNodes) {
+      if (node.depleted) continue;
       const dist = Phaser.Math.Distance.Between(
         this.player.x, this.player.y, node.x, node.y
       );
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestNode = node;
+      }
+    }
 
-      if (dist < collectRange) {
-        // Accumulate progress
-        const prev = this._collectProgress.get(node) || 0;
-        const next = prev + delta;
-        this._collectProgress.set(node, next);
+    // Reset progress for all nodes that are not the nearest
+    for (const node of this._collectProgress.keys()) {
+      if (node !== nearestNode) this._collectProgress.delete(node);
+    }
 
-        // Draw progress bar above the node
-        this._drawCollectProgress(node, Math.min(next / collectTime, 1));
+    // Accumulate progress only for the nearest node
+    if (nearestNode) {
+      const prev = this._collectProgress.get(nearestNode) || 0;
+      const next = prev + delta;
+      this._collectProgress.set(nearestNode, next);
 
-        // Check if complete
-        if (next >= collectTime) {
-          this._collectProgress.delete(node);
-          node.collect(this.economy);
-          EventBus.emit('resources_updated', this.economy.resources);
-        }
-      } else {
-        // Out of range — reset progress
-        this._collectProgress.delete(node);
+      this._drawCollectProgress(nearestNode, Math.min(next / collectTime, 1));
+
+      if (next >= collectTime) {
+        this._collectProgress.delete(nearestNode);
+        nearestNode.collect(this.economy);
+        EventBus.emit('resources_updated', this.economy.resources);
       }
     }
   }
@@ -233,6 +247,20 @@ export class GameScene extends Phaser.Scene {
     const dmg    = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
     if (entity) entity.takeDamage(dmg);
     projectile.destroy();
+  }
+
+  _onEnemyHitTower(enemySprite, towerSprite) {
+    if (!enemySprite.active || !towerSprite.active) return;
+    const towerEntity = towerSprite.getData('entity');
+    if (towerEntity && !towerEntity.dead) {
+      const now = this.time.now;
+      if (!enemySprite._lastTowerDmgTime || now - enemySprite._lastTowerDmgTime > 800) {
+        enemySprite._lastTowerDmgTime = now;
+        const enemyEntity = enemySprite.getData('entity');
+        const dmg = enemyEntity ? enemyEntity.damage : CONFIG.ENEMIES.BANDIT.DAMAGE;
+        towerEntity.takeDamage(dmg);
+      }
+    }
   }
 
   _onEnemyHitWall(enemySprite, wallSprite) {
