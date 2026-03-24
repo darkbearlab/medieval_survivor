@@ -11,6 +11,8 @@ export class BootScene extends Phaser.Scene {
     this._genResourceTree();
     this._genResourceStone();
     this._genProjectile();
+    this._genBuildingWall();
+    this._genBuildingTower();
     this.scene.start('MenuScene');
   }
 
@@ -144,6 +146,61 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xFFFFFF, 0.6);
     g.fillCircle(3, 3, 2);
     g.generateTexture('projectile', 8, 8);
+    g.destroy();
+  }
+
+  _genBuildingWall() {
+    const g = this.make.graphics({ add: false });
+    // Stone wall base
+    g.fillStyle(0x888888);
+    g.fillRect(0, 0, 40, 40);
+    // Stone block pattern
+    g.fillStyle(0x666666);
+    g.fillRect(1, 1, 18, 18);
+    g.fillRect(21, 1, 18, 18);
+    g.fillRect(1, 21, 18, 18);
+    g.fillRect(21, 21, 18, 18);
+    // Mortar lines
+    g.fillStyle(0xAAAAAA, 0.5);
+    g.fillRect(0, 19, 40, 2);
+    g.fillRect(19, 0, 2, 40);
+    // Top edge highlight
+    g.fillStyle(0x999999);
+    g.fillRect(0, 0, 40, 3);
+    g.fillRect(0, 0, 3, 40);
+    // Dark edge shadow
+    g.fillStyle(0x444444);
+    g.fillRect(37, 0, 3, 40);
+    g.fillRect(0, 37, 40, 3);
+    g.generateTexture('building_wall', 40, 40);
+    g.destroy();
+  }
+
+  _genBuildingTower() {
+    const g = this.make.graphics({ add: false });
+    // Tower base
+    g.fillStyle(0x777777);
+    g.fillRect(4, 20, 24, 28);
+    // Tower top
+    g.fillStyle(0x888888);
+    g.fillRect(0, 8, 32, 16);
+    // Battlements
+    g.fillStyle(0x666666);
+    g.fillRect(0, 0, 7, 12);
+    g.fillRect(9, 0, 7, 12);
+    g.fillRect(18, 0, 7, 12);
+    g.fillRect(27, 0, 5, 12);
+    // Arrow slit
+    g.fillStyle(0x222222);
+    g.fillRect(13, 12, 6, 10);
+    // Base highlight
+    g.fillStyle(0xAAAAAA, 0.4);
+    g.fillRect(4, 20, 3, 28);
+    g.fillRect(4, 20, 24, 3);
+    // Dark shadow
+    g.fillStyle(0x444444);
+    g.fillRect(25, 20, 3, 28);
+    g.generateTexture('building_tower', 32, 48);
     g.destroy();
   }
 }

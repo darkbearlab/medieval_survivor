@@ -9,6 +9,11 @@ export const CONFIG = {
     HP: 100,
     ATTACK_RANGE: 260,
     ATTACK_RATE: 800,   // ms between auto-attacks
+    AGGRO_RANGE: 160,   // enemy targets player if within this range
+  },
+
+  AUTO_COLLECT: {
+    TIME: 1500,  // ms to auto-collect
   },
 
   TOWN_CENTER: {
@@ -46,5 +51,25 @@ export const CONFIG = {
     SPEED: 420,
     DAMAGE: 25,
     LIFESPAN: 2200,
+  },
+
+  BUILDINGS: {
+    WALL: {
+      COST: { wood: 8 },
+      HP: 100,
+      UPGRADE: {
+        2: { COST: { wood: 5, stone: 8 }, HP_BONUS: 100 },
+      },
+    },
+    TOWER: {
+      COST: { wood: 10, stone: 5 },
+      HP: 80,
+      RANGE: 200,
+      ATTACK_RATE: 1000,
+      DAMAGE: 20,
+      UPGRADE: {
+        2: { COST: { wood: 8, stone: 10 }, RANGE: 280, ATTACK_RATE: 700 },
+      },
+    },
   },
 };

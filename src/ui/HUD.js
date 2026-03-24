@@ -5,6 +5,7 @@ export class HUD {
   constructor(scene) {
     this.scene      = scene;
     this.hpBarWidth = 300;
+    this.playerHpBarWidth = 160;
     this._create();
     this._subscribe();
   }
@@ -75,19 +76,54 @@ export class HUD {
 
     this._drawHpBar(CONFIG.TOWN_CENTER.HP, CONFIG.TOWN_CENTER.HP);
 
+    // --- Player HP bar (bottom-left) ---
+    s.add.text(16, H - 72, '勇者', {
+      fontSize: '14px',
+      color: '#88BBFF',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0, 0);
+
+    this.playerHpBarGraphics = s.add.graphics();
+    this.playerHpText = s.add.text(16 + this.playerHpBarWidth / 2, H - 50,
+      `${CONFIG.PLAYER.HP} / ${CONFIG.PLAYER.HP}`, {
+      fontSize: '13px',
+      color: '#FFFFFF',
+    }).setOrigin(0.5).setDepth(1);
+
+    this._drawPlayerHpBar(CONFIG.PLAYER.HP, CONFIG.PLAYER.HP);
+
+    // --- Build hint (bottom, near center-right) ---
+    this.buildHint = s.add.text(W / 2 + 10, H - 16, '[B] 建造選單', {
+      fontSize: '13px',
+      color: '#886644',
+    }).setOrigin(0, 0.5);
+
     // --- Collect hint ---
-    this.collectHint = s.add.text(W / 2, H - 16, '靠近資源後左鍵點擊採集', {
+    this.collectHint = s.add.text(W / 2 - 10, H - 16, '靠近資源自動採集', {
       fontSize: '13px',
       color: '#555555',
-    }).setOrigin(0.5);
+    }).setOrigin(1, 0.5);
+
+    // --- Build failed message ---
+    this.buildFailText = s.add.text(W / 2, H - 100, '', {
+      fontSize: '16px',
+      color: '#FF4444',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(110).setAlpha(0);
   }
 
   _subscribe() {
-    this._onResources = (r) => this._updateResources(r);
-    this._onTownHp    = (hp, max) => this._drawHpBar(hp, max);
+    this._onResources    = (r) => this._updateResources(r);
+    this._onTownHp       = (hp, max) => this._drawHpBar(hp, max);
+    this._onPlayerHp     = (hp, max) => this._drawPlayerHpBar(hp, max);
+    this._onBuildFailed  = (msg) => this._showBuildFailed(msg);
 
     EventBus.on('resources_updated', this._onResources);
     EventBus.on('town_hp_changed',   this._onTownHp);
+    EventBus.on('player_hp_changed', this._onPlayerHp);
+    EventBus.on('build_failed',      this._onBuildFailed);
   }
 
   _updateResources(res) {
@@ -126,6 +162,45 @@ export class HUD {
     }
   }
 
+  _drawPlayerHpBar(hp, maxHp) {
+    const H   = CONFIG.HEIGHT;
+    const bW  = this.playerHpBarWidth;
+    const bH  = 20;
+    const bX  = 16;
+    const bY  = H - 60;
+    const pct = Math.max(0, hp / maxHp);
+
+    this.playerHpBarGraphics.clear();
+
+    // Background
+    this.playerHpBarGraphics.fillStyle(0x222222, 0.85);
+    this.playerHpBarGraphics.fillRect(bX, bY, bW, bH);
+
+    // Fill
+    const color = pct > 0.5 ? 0x2288FF : pct > 0.25 ? 0xFFAA00 : 0xFF2222;
+    this.playerHpBarGraphics.fillStyle(color);
+    this.playerHpBarGraphics.fillRect(bX, bY, bW * pct, bH);
+
+    // Border
+    this.playerHpBarGraphics.lineStyle(1, 0x6688AA, 0.8);
+    this.playerHpBarGraphics.strokeRect(bX, bY, bW, bH);
+
+    if (this.playerHpText) {
+      this.playerHpText.setText(`${Math.ceil(hp)} / ${maxHp}`);
+    }
+  }
+
+  _showBuildFailed(msg) {
+    if (!this.buildFailText) return;
+    this.buildFailText.setText(msg).setAlpha(1);
+    this.scene.tweens.add({
+      targets: this.buildFailText,
+      alpha: 0,
+      delay: 800,
+      duration: 400,
+    });
+  }
+
   // Called every frame from UIScene to update wave countdown
   update(waveSystem) {
     if (!waveSystem) return;
@@ -151,5 +226,7 @@ export class HUD {
   destroy() {
     EventBus.off('resources_updated', this._onResources);
     EventBus.off('town_hp_changed',   this._onTownHp);
+    EventBus.off('player_hp_changed', this._onPlayerHp);
+    EventBus.off('build_failed',      this._onBuildFailed);
   }
 }

@@ -13,6 +13,7 @@ export class Enemy {
     this.attackRate = cfg.ATTACK_RATE;
     this.lastAttack = 0;
     this.dead      = false;
+    this.aggroRange = CONFIG.PLAYER.AGGRO_RANGE;
 
     this.sprite = scene.physics.add.sprite(x, y, 'enemy_bandit');
     this.sprite.setDepth(8);
@@ -27,36 +28,71 @@ export class Enemy {
   update(time) {
     if (this.dead || !this.sprite.active) return;
 
-    const tc   = this.scene.townCenter;
-    const dist = Phaser.Math.Distance.Between(
-      this.sprite.x, this.sprite.y, tc.x, tc.y
-    );
+    const player = this.scene.player;
+    const tc     = this.scene.townCenter;
 
-    if (dist < CONFIG.TOWN_CENTER.RADIUS + 16) {
-      // Stop and attack town center
-      this.sprite.setVelocity(0, 0);
+    // Check if player is alive and within aggro range
+    const playerAlive = player && !player.isDead && player.sprite && player.sprite.active;
+    const playerDist = playerAlive
+      ? Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y)
+      : Infinity;
 
-      if (time - this.lastAttack > this.attackRate) {
-        this.lastAttack = time;
-        tc.takeDamage(this.damage);
-        EventBus.emit('town_hp_changed', tc.hp, tc.maxHp);
-        this._showDamageNumber(tc.x, tc.y - 30);
+    if (playerAlive && playerDist < this.aggroRange) {
+      // --- Target player ---
+      const attackRange = 28;
+      if (playerDist < attackRange) {
+        // Stop and attack player
+        this.sprite.setVelocity(0, 0);
 
-        if (tc.hp <= 0 && !this.scene.isGameOver) {
-          this.scene.gameOver();
+        if (time - this.lastAttack > this.attackRate) {
+          this.lastAttack = time;
+          player.takeDamage(this.damage);
+          this._showDamageNumber(player.x, player.y - 30);
         }
+      } else {
+        // Move toward player
+        const angle = Phaser.Math.Angle.Between(
+          this.sprite.x, this.sprite.y, player.x, player.y
+        );
+        this.sprite.setVelocity(
+          Math.cos(angle) * this.speed,
+          Math.sin(angle) * this.speed
+        );
+        if (Math.cos(angle) < 0) this.sprite.setFlipX(true);
+        else                      this.sprite.setFlipX(false);
       }
     } else {
-      // Move toward town center
-      const angle = Phaser.Math.Angle.Between(
+      // --- Target town center (original behavior) ---
+      const dist = Phaser.Math.Distance.Between(
         this.sprite.x, this.sprite.y, tc.x, tc.y
       );
-      this.sprite.setVelocity(
-        Math.cos(angle) * this.speed,
-        Math.sin(angle) * this.speed
-      );
-      if (Math.cos(angle) < 0) this.sprite.setFlipX(true);
-      else                      this.sprite.setFlipX(false);
+
+      if (dist < CONFIG.TOWN_CENTER.RADIUS + 16) {
+        // Stop and attack town center
+        this.sprite.setVelocity(0, 0);
+
+        if (time - this.lastAttack > this.attackRate) {
+          this.lastAttack = time;
+          tc.takeDamage(this.damage);
+          EventBus.emit('town_hp_changed', tc.hp, tc.maxHp);
+          this._showDamageNumber(tc.x, tc.y - 30);
+
+          if (tc.hp <= 0 && !this.scene.isGameOver) {
+            this.scene.gameOver();
+          }
+        }
+      } else {
+        // Move toward town center
+        const angle = Phaser.Math.Angle.Between(
+          this.sprite.x, this.sprite.y, tc.x, tc.y
+        );
+        this.sprite.setVelocity(
+          Math.cos(angle) * this.speed,
+          Math.sin(angle) * this.speed
+        );
+        if (Math.cos(angle) < 0) this.sprite.setFlipX(true);
+        else                      this.sprite.setFlipX(false);
+      }
     }
 
     this._drawHpBar();

@@ -1,10 +1,11 @@
-import { CONFIG }        from '../config.js';
-import { EventBus }      from '../utils/EventBus.js';
-import { Player }        from '../entities/Player.js';
-import { ResourceNode }  from '../entities/ResourceNode.js';
-import { TownCenter }    from '../entities/buildings/TownCenter.js';
-import { WaveSystem }    from '../systems/WaveSystem.js';
-import { EconomySystem } from '../systems/EconomySystem.js';
+import { CONFIG }          from '../config.js';
+import { EventBus }        from '../utils/EventBus.js';
+import { Player }          from '../entities/Player.js';
+import { ResourceNode }    from '../entities/ResourceNode.js';
+import { TownCenter }      from '../entities/buildings/TownCenter.js';
+import { WaveSystem }      from '../systems/WaveSystem.js';
+import { EconomySystem }   from '../systems/EconomySystem.js';
+import { BuildingSystem }  from '../systems/BuildingSystem.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -29,11 +30,19 @@ export class GameScene extends Phaser.Scene {
     // --- Physics groups ---
     this.enemies     = this.physics.add.group();
     this.projectiles = this.physics.add.group();
+    this.wallsGroup  = this.physics.add.staticGroup();
+
+    // --- Building System ---
+    this.buildingSystem = new BuildingSystem(this);
 
     // --- Entities ---
     this.townCenter    = new TownCenter(this, TOWN_CENTER.X, TOWN_CENTER.Y);
     this.resourceNodes = this._createResourceNodes();
     this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120);
+
+    // --- Auto-collect state ---
+    this._collectProgress = new Map();   // node -> ms held
+    this._collectGraphics = this.add.graphics().setDepth(18);
 
     // --- Camera ---
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -51,6 +60,30 @@ export class GameScene extends Phaser.Scene {
       rightArrow: Phaser.Input.Keyboard.KeyCodes.RIGHT,
     });
 
+    this.keyB   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
+    this.keyESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
+    // --- Pointer events ---
+    this.input.on('pointermove', (pointer) => {
+      if (this.buildingSystem.isPlacing()) {
+        const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        this.buildingSystem.updatePreview(world.x, world.y);
+      }
+    });
+
+    this.input.on('pointerdown', (pointer) => {
+      if (this.isGameOver) return;
+      // Ignore clicks on UI (UIScene handles its own input)
+      if (this.buildingSystem.isPlacing()) {
+        const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        this.buildingSystem.tryPlace(world.x, world.y);
+      } else {
+        // Try clicking on a tower for upgrade panel
+        const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        this._tryClickBuilding(world.x, world.y);
+      }
+    });
+
     // --- Collisions ---
     this.physics.add.overlap(
       this.projectiles,
@@ -60,10 +93,20 @@ export class GameScene extends Phaser.Scene {
       this
     );
 
-    // --- Click to collect ---
-    this.input.on('pointerdown', (pointer) => {
-      if (!this.isGameOver) this._tryCollect(pointer);
-    });
+    // Enemies collide with walls and deal damage on contact
+    this.physics.add.collider(
+      this.enemies,
+      this.wallsGroup,
+      this._onEnemyHitWall,
+      null,
+      this
+    );
+
+    // --- EventBus subscriptions ---
+    this._onBuildSelect = (type) => {
+      this.buildingSystem.startPlacing(type);
+    };
+    EventBus.on('build_select', this._onBuildSelect);
 
     // --- Attack timing ---
     this.nextAttackTime = 0;
@@ -74,6 +117,7 @@ export class GameScene extends Phaser.Scene {
     // --- Initial HUD values ---
     EventBus.emit('resources_updated', this.economy.resources);
     EventBus.emit('town_hp_changed', this.townCenter.hp, this.townCenter.maxHp);
+    EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
 
     // --- Map border (visual) ---
     const border = this.add.graphics().setDepth(1);
@@ -113,23 +157,70 @@ export class GameScene extends Phaser.Scene {
     return nodes;
   }
 
-  _tryCollect(pointer) {
-    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+  // ─────────────────────────────────────────────
+  //  Auto-collect
+  // ─────────────────────────────────────────────
+
+  _updateAutoCollect(delta) {
+    this._collectGraphics.clear();
+
+    if (this.player.isDead) {
+      this._collectProgress.clear();
+      return;
+    }
+
+    const collectRange = CONFIG.RESOURCES.COLLECT_RANGE;
+    const collectTime  = CONFIG.AUTO_COLLECT.TIME;
 
     for (const node of this.resourceNodes) {
-      if (node.depleted) continue;
+      if (node.depleted) {
+        this._collectProgress.delete(node);
+        continue;
+      }
 
-      const clickDist  = Phaser.Math.Distance.Between(world.x, world.y, node.x, node.y);
-      const playerDist = Phaser.Math.Distance.Between(
+      const dist = Phaser.Math.Distance.Between(
         this.player.x, this.player.y, node.x, node.y
       );
 
-      if (clickDist < 28 && playerDist < CONFIG.RESOURCES.COLLECT_RANGE) {
-        node.collect(this.economy);
-        EventBus.emit('resources_updated', this.economy.resources);
-        break;
+      if (dist < collectRange) {
+        // Accumulate progress
+        const prev = this._collectProgress.get(node) || 0;
+        const next = prev + delta;
+        this._collectProgress.set(node, next);
+
+        // Draw progress bar above the node
+        this._drawCollectProgress(node, Math.min(next / collectTime, 1));
+
+        // Check if complete
+        if (next >= collectTime) {
+          this._collectProgress.delete(node);
+          node.collect(this.economy);
+          EventBus.emit('resources_updated', this.economy.resources);
+        }
+      } else {
+        // Out of range — reset progress
+        this._collectProgress.delete(node);
       }
     }
+  }
+
+  _drawCollectProgress(node, pct) {
+    const w  = 36;
+    const h  = 5;
+    const bx = node.x - w / 2;
+    const by = node.y - 28;
+
+    // Background
+    this._collectGraphics.fillStyle(0x222222, 0.8);
+    this._collectGraphics.fillRect(bx, by, w, h);
+
+    // Fill
+    this._collectGraphics.fillStyle(0x44CCFF);
+    this._collectGraphics.fillRect(bx, by, w * pct, h);
+
+    // Border
+    this._collectGraphics.lineStyle(1, 0x888888, 0.6);
+    this._collectGraphics.strokeRect(bx, by, w, h);
   }
 
   // ─────────────────────────────────────────────
@@ -139,14 +230,31 @@ export class GameScene extends Phaser.Scene {
   _onProjectileHitEnemy(projectile, enemySprite) {
     if (!projectile.active || !enemySprite.active) return;
     const entity = enemySprite.getData('entity');
-    if (entity) entity.takeDamage(CONFIG.PROJECTILE.DAMAGE);
+    const dmg    = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
+    if (entity) entity.takeDamage(dmg);
     projectile.destroy();
   }
 
-  _fireProjectile(x, y, targetSprite) {
+  _onEnemyHitWall(enemySprite, wallSprite) {
+    if (!enemySprite.active || !wallSprite.active) return;
+    const wallEntity = wallSprite.getData('entity');
+    if (wallEntity && !wallEntity.dead) {
+      // Deal a small tick of damage to wall on contact (throttled via time)
+      const now = this.time.now;
+      if (!enemySprite._lastWallDmgTime || now - enemySprite._lastWallDmgTime > 800) {
+        enemySprite._lastWallDmgTime = now;
+        const enemyEntity = enemySprite.getData('entity');
+        const dmg = enemyEntity ? enemyEntity.damage : CONFIG.ENEMIES.BANDIT.DAMAGE;
+        wallEntity.takeDamage(dmg);
+      }
+    }
+  }
+
+  _fireProjectile(x, y, targetSprite, damage = CONFIG.PROJECTILE.DAMAGE) {
     const proj = this.physics.add.image(x, y, 'projectile');
     proj.setDepth(12);
     proj.setData('isProjectile', true);
+    proj.setData('damage', damage);
     this.projectiles.add(proj);
 
     const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
@@ -174,6 +282,27 @@ export class GameScene extends Phaser.Scene {
     });
 
     return nearest;
+  }
+
+  _tryClickBuilding(worldX, worldY) {
+    // Check towers (they have interactive sprites)
+    for (const tower of this.buildingSystem.towers) {
+      if (tower.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, tower.x, tower.y);
+      if (dist < 20) {
+        EventBus.emit('building_clicked', tower);
+        return;
+      }
+    }
+    // Check walls
+    for (const wall of this.buildingSystem.walls) {
+      if (wall.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, wall.x, wall.y);
+      if (dist < 22) {
+        EventBus.emit('building_clicked', wall);
+        return;
+      }
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -218,11 +347,29 @@ export class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.isGameOver) return;
 
+    // B key: toggle build menu
+    if (Phaser.Input.Keyboard.JustDown(this.keyB)) {
+      if (this.buildingSystem.isPlacing()) {
+        this.buildingSystem.cancelPlacing();
+      } else {
+        EventBus.emit('toggle_build_menu');
+      }
+    }
+
+    // ESC key: cancel placement or close menus
+    if (Phaser.Input.Keyboard.JustDown(this.keyESC)) {
+      if (this.buildingSystem.isPlacing()) {
+        this.buildingSystem.cancelPlacing();
+      } else {
+        EventBus.emit('close_build_menu');
+      }
+    }
+
     // Player movement
     this.player.update(this.cursors);
 
     // Auto-attack nearest enemy
-    if (time > this.nextAttackTime) {
+    if (!this.player.isDead && time > this.nextAttackTime) {
       const target = this._findNearestEnemy(
         this.player.x,
         this.player.y,
@@ -240,11 +387,18 @@ export class GameScene extends Phaser.Scene {
       if (entity && !entity.dead) entity.update(time);
     });
 
+    // Building system (tower auto-attack)
+    this.buildingSystem.update(time);
+
+    // Auto-collect
+    this._updateAutoCollect(delta);
+
     // Wave system
     this.waveSystem.update(delta);
   }
 
   shutdown() {
+    EventBus.off('build_select', this._onBuildSelect);
     EventBus.removeAllListeners();
   }
 }

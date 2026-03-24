@@ -58,7 +58,7 @@ export class MenuScene extends Phaser.Scene {
       fontSize: '15px', color: '#888888',
     }).setOrigin(0.5);
     this.add.text(WIDTH / 2, HEIGHT - 65,
-      'WASD / 方向鍵 移動   左鍵點擊採集資源（靠近後）   消滅敵人保護村莊中心',
+      'WASD 移動   靠近資源自動採集   [B] 建造選單   點擊建築升級',
       ctrlStyle).setOrigin(0.5);
 
     // Pulsing border effect on button
