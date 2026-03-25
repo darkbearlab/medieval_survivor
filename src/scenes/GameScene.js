@@ -84,6 +84,7 @@ export class GameScene extends Phaser.Scene {
 
     this.keyB   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
     this.keyESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.keyP   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
 
     // Disable browser right-click context menu so right-click can be used in-game
     this.input.mouse.disableContextMenu();
@@ -97,7 +98,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.on('pointerdown', (pointer) => {
-      if (this.isGameOver) return;
+      if (this.isGameOver || this.isPaused) return;
       // Right-click cancels placement (or closes menus)
       if (pointer.rightButtonDown()) {
         if (this.buildingSystem.isPlacing()) {
@@ -190,6 +191,19 @@ export class GameScene extends Phaser.Scene {
 
     // --- Mini compass (decorative) ---
     this._drawMapEdgeMarkers();
+
+    // --- Pause state ---
+    this.isPaused = false;
+    const { WIDTH, HEIGHT } = CONFIG;
+    this._pauseOverlay = this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x000000, 0.65)
+      .setDepth(500).setScrollFactor(0).setVisible(false);
+    this._pauseTitle = this.add.text(WIDTH / 2, HEIGHT / 2 - 24, 'PAUSED', {
+      fontSize: '60px', fontFamily: 'Georgia, serif',
+      color: '#FFFFFF', stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(501).setScrollFactor(0).setVisible(false);
+    this._pauseHint = this.add.text(WIDTH / 2, HEIGHT / 2 + 46, '按 [P] 繼續遊戲', {
+      fontSize: '20px', color: '#AAAAAA',
+    }).setOrigin(0.5).setDepth(501).setScrollFactor(0).setVisible(false);
   }
 
   // ─────────────────────────────────────────────
@@ -526,6 +540,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────
+  //  Pause
+  // ─────────────────────────────────────────────
+
+  _togglePause() {
+    this.isPaused = !this.isPaused;
+    if (this.isPaused) {
+      this.physics.pause();
+      this._pauseOverlay.setVisible(true);
+      this._pauseTitle.setVisible(true);
+      this._pauseHint.setVisible(true);
+    } else {
+      this.physics.resume();
+      this._pauseOverlay.setVisible(false);
+      this._pauseTitle.setVisible(false);
+      this._pauseHint.setVisible(false);
+    }
+  }
+
+  // ─────────────────────────────────────────────
   //  Game Over
   // ─────────────────────────────────────────────
 
@@ -566,6 +599,10 @@ export class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isGameOver) return;
+
+    // P key: toggle pause (checked before pause guard so it always works)
+    if (Phaser.Input.Keyboard.JustDown(this.keyP)) this._togglePause();
+    if (this.isPaused) return;
 
     // B key: toggle build menu
     if (Phaser.Input.Keyboard.JustDown(this.keyB)) {

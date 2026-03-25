@@ -135,13 +135,13 @@ export class UpgradePanel {
     if (!upgCfg) return;
 
     const gameScene = this.scene.scene.get('GameScene');
-    if (!gameScene.economy.canAfford(upgCfg.COST)) {
+    if (!gameScene.economy.canAffordWithGold(upgCfg.COST)) {
       this.costText.setColor('#FF4444');
       this.scene.time.delayedCall(600, () => this.costText.setColor('#CCCC88'));
       return;
     }
 
-    gameScene.economy.spend(upgCfg.COST);
+    gameScene.economy.spendWithGold(upgCfg.COST);
     EventBus.emit('resources_updated', gameScene.economy.resources);
     b.upgrade();
     this._refresh();

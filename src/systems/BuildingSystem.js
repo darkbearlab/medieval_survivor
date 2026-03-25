@@ -74,9 +74,9 @@ export class BuildingSystem {
     const cfg = CONFIG.BUILDINGS[typeKey];
     if (!cfg) return false;
 
-    // Check cost
-    if (!this.scene.economy.canAfford(cfg.COST)) {
-      EventBus.emit('build_failed', '資源不足');
+    // Check cost (gold can cover resource deficits at the configured rate)
+    if (!this.scene.economy.canAffordWithGold(cfg.COST)) {
+      EventBus.emit('build_failed', '資源不足（含金幣換算）');
       return false;
     }
 
@@ -87,8 +87,8 @@ export class BuildingSystem {
       return false;
     }
 
-    // Spend resources
-    this.scene.economy.spend(cfg.COST);
+    // Spend resources (auto-exchanges gold for any deficit)
+    this.scene.economy.spendWithGold(cfg.COST);
     EventBus.emit('resources_updated', this.scene.economy.resources);
 
     // Create building

@@ -40,9 +40,10 @@ export class WaveSystem {
     this.phase     = 'wave';
     this.countdown = 0;
 
-    const pos   = this._cyclePos(this.currentWave);
-    const base  = 3 + this.currentWave * 3;
-    const count = pos === 3 ? Math.round(base * 1.8) : base;
+    const pos      = this._cyclePos(this.currentWave);
+    const base     = 3 + this.currentWave * 3;
+    const rawCount = pos === 3 ? Math.round(base * 1.8) : base;
+    const count    = Math.max(1, Math.round(rawCount * CONFIG.WAVES.SPAWN_MULT));
 
     this._spawnEnemies(count, pos);
     EventBus.emit('wave_started', this.currentWave);
