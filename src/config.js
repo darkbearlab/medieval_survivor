@@ -28,9 +28,9 @@ export const CONFIG = {
   RESOURCES: {
     COLLECT_RANGE: 90,
     TREE_COUNT: 28,
-    STONE_COUNT: 18,
-    TREE_YIELD: 5,
-    STONE_YIELD: 3,
+    STONE_COUNT: 28,
+    TREE_YIELD: 7,
+    STONE_YIELD: 5,
     RESPAWN_TIME: 20000,
   },
 
