@@ -38,6 +38,8 @@ export class GameScene extends Phaser.Scene {
     this.terrainGroup    = this.physics.add.staticGroup();
     this.smithGroup      = this.physics.add.staticGroup();
     this.trainingGroup   = this.physics.add.staticGroup();
+    this.cafeteriaGroup  = this.physics.add.staticGroup();
+    this.mageProjectiles = this.physics.add.group();
 
     // --- Pathfinder (64×64 grid, 40px cells) ---
     const gridCells = CONFIG.WORLD_WIDTH / CONFIG.BUILDING_GRID;
@@ -116,6 +118,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.terrainGroup);
     this.physics.add.collider(this.enemies, this.smithGroup,    this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.trainingGroup, this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.cafeteriaGroup, this._onEnemyHitSmithOrTraining, null, this);
 
     // Player blocked by walls, towers, terrain, and town center
     this.physics.add.collider(this.player.sprite, this.wallsGroup);
@@ -124,12 +127,21 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player.sprite, this.townCenter.sprite);
     this.physics.add.collider(this.player.sprite, this.smithGroup);
     this.physics.add.collider(this.player.sprite, this.trainingGroup);
+    this.physics.add.collider(this.player.sprite, this.cafeteriaGroup);
 
     // Enemy projectiles damage buildings
-    this.physics.add.overlap(this.enemyProjectiles, this.wallsGroup,    this._onEnemyProjHitBuilding, null, this);
-    this.physics.add.overlap(this.enemyProjectiles, this.towersGroup,   this._onEnemyProjHitBuilding, null, this);
-    this.physics.add.overlap(this.enemyProjectiles, this.smithGroup,    this._onEnemyProjHitBuilding, null, this);
-    this.physics.add.overlap(this.enemyProjectiles, this.trainingGroup, this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.wallsGroup,     this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.towersGroup,    this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.smithGroup,     this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.trainingGroup,  this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.cafeteriaGroup, this._onEnemyProjHitBuilding, null, this);
+
+    // Mage projectiles explode on building contact
+    this.physics.add.overlap(this.mageProjectiles, this.wallsGroup,     this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.towersGroup,    this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.smithGroup,     this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.trainingGroup,  this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.cafeteriaGroup, this._onMageProjHitBuilding, null, this);
 
     // --- EventBus subscriptions ---
     this._onBuildSelect = (type) => {
@@ -338,6 +350,65 @@ export class GameScene extends Phaser.Scene {
     proj.destroy();
   }
 
+  _onMageProjHitBuilding(proj, buildingSprite) {
+    if (!proj.active || !buildingSprite.active) return;
+    const dmg = proj.getData('damage') || CONFIG.ENEMIES.MAGE.DAMAGE;
+    const px = proj.x, py = proj.y;
+    proj.destroy();
+    this._triggerExplosion(px, py, dmg);
+  }
+
+  _triggerExplosion(x, y, damage) {
+    const radius = CONFIG.ENEMIES.MAGE.EXPLOSION_RADIUS;
+    this._showExplosion(x, y, radius);
+
+    // Damage player
+    if (!this.player.isDead) {
+      const d = Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y);
+      if (d < radius) this.player.takeDamage(damage);
+    }
+
+    // Damage all buildings in blast radius
+    const lists = [
+      this.buildingSystem.walls,
+      this.buildingSystem.towers,
+      this.buildingSystem.smiths,
+      this.buildingSystem.trainingGrounds,
+      this.buildingSystem.cafeterias,
+    ];
+    for (const list of lists) {
+      for (const b of list) {
+        if (b.dead) continue;
+        const d = Phaser.Math.Distance.Between(x, y, b.x, b.y);
+        if (d < radius) b.takeDamage(damage);
+      }
+    }
+  }
+
+  _showExplosion(x, y, radius) {
+    const outer = this.add.circle(x, y, radius,        0xFF6600, 0.55).setDepth(20);
+    const inner = this.add.circle(x, y, radius * 0.45, 0xFFEE00, 0.80).setDepth(21);
+    this.tweens.add({
+      targets: [outer, inner],
+      alpha: 0, scaleX: 1.5, scaleY: 1.5,
+      duration: 380,
+      onComplete: () => { outer.destroy(); inner.destroy(); },
+    });
+  }
+
+  _fireMageProjectile(x, y, target, damage) {
+    const proj = this.mageProjectiles.create(x, y, 'projectile');
+    if (!proj || !proj.body) return;
+    proj.setDepth(12).setTint(0xAA00FF).setScale(1.5);
+    proj.setData('damage', damage);
+    const angle = Phaser.Math.Angle.Between(x, y, target.x, target.y);
+    const speed = CONFIG.PROJECTILE.SPEED * 0.5;
+    proj.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN * 1.8, () => {
+      if (proj.active) proj.destroy();
+    });
+  }
+
   _fireEnemyProjectile(x, y, targetSprite, damage) {
     const proj = this.enemyProjectiles.create(x, y, 'projectile');
     if (!proj || !proj.body) return;
@@ -408,6 +479,11 @@ export class GameScene extends Phaser.Scene {
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
     }
     for (const b of this.buildingSystem.trainingGrounds) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.cafeterias) {
       if (b.dead) continue;
       const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
@@ -503,6 +579,36 @@ export class GameScene extends Phaser.Scene {
         proj.destroy();
         this.player.takeDamage(dmg);
         if (this.player.isDead) break;
+      }
+    }
+
+    // Mage projectiles vs player (manual check — triggers explosion)
+    if (!this.player.isDead) {
+      const toExplode = [];
+      this.mageProjectiles.getChildren().forEach(proj => {
+        if (!proj.active) return;
+        const dist = Phaser.Math.Distance.Between(proj.x, proj.y, this.player.x, this.player.y);
+        if (dist < 20) toExplode.push(proj);
+      });
+      for (const proj of toExplode) {
+        const dmg = proj.getData('damage') || CONFIG.ENEMIES.MAGE.DAMAGE;
+        const ex = proj.x, ey = proj.y;
+        proj.destroy();
+        this._triggerExplosion(ex, ey, dmg);
+        if (this.player.isDead) break;
+      }
+    }
+
+    // Cafeteria healing — regen HP when player is near
+    if (!this.player.isDead && this.player.hp < this.player.maxHp) {
+      for (const c of this.buildingSystem.cafeterias) {
+        if (c.dead) continue;
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, c.x, c.y);
+        if (dist < c.healRange) {
+          this.player.hp = Math.min(this.player.maxHp, this.player.hp + c.healRate * delta / 1000);
+          EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
+          break;
+        }
       }
     }
 

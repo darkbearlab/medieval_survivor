@@ -18,6 +18,8 @@ export class BootScene extends Phaser.Scene {
     this._genTerrainRock();
     this._genBlacksmith();
     this._genTrainingGround();
+    this._genEnemyMage();
+    this._genCafeteria();
     this.scene.start('MenuScene');
   }
 
@@ -303,6 +305,67 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(28, 2, 10, 4);
     g.fillRect(30, 0, 6, 8);
     g.generateTexture('building_training', 40, 40);
+    g.destroy();
+  }
+
+  _genEnemyMage() {
+    const g = this.make.graphics({ add: false });
+    // Robe (deep purple)
+    g.fillStyle(0x5a0078);
+    g.fillRect(8, 14, 16, 18);
+    // Head
+    g.fillStyle(0xFFD0A0);
+    g.fillRect(10, 6, 12, 10);
+    // Hat brim
+    g.fillStyle(0x3a0050);
+    g.fillRect(7, 8, 18, 4);
+    // Hat cone
+    g.fillStyle(0x3a0050);
+    g.fillTriangle(10, 8, 22, 8, 16, 0);
+    // Staff
+    g.fillStyle(0x8B6914);
+    g.fillRect(25, 6, 3, 22);
+    // Magic orb on staff
+    g.fillStyle(0x88AAFF, 0.9);
+    g.fillCircle(26, 5, 4);
+    g.fillStyle(0xFFFFFF, 0.5);
+    g.fillCircle(25, 4, 2);
+    // Legs
+    g.fillStyle(0x3a0050);
+    g.fillRect(8, 32, 6, 4);
+    g.fillRect(18, 32, 6, 4);
+    g.generateTexture('enemy_mage', 32, 36);
+    g.destroy();
+  }
+
+  _genCafeteria() {
+    const g = this.make.graphics({ add: false });
+    // Base (warm brown wood)
+    g.fillStyle(0x8B4513);
+    g.fillRect(0, 0, 40, 40);
+    // Inner floor
+    g.fillStyle(0xA0602A);
+    g.fillRect(2, 2, 36, 36);
+    // Table top
+    g.fillStyle(0x7B4A20);
+    g.fillRect(8, 12, 24, 4);
+    // Table body
+    g.fillStyle(0x5C3310);
+    g.fillRect(8, 16, 24, 12);
+    // Food bowls (red and gold)
+    g.fillStyle(0xCC4444);
+    g.fillCircle(16, 17, 4);
+    g.fillStyle(0xEEAA00);
+    g.fillCircle(26, 17, 4);
+    // Steam wisps
+    g.fillStyle(0xDDDDDD, 0.5);
+    g.fillRect(14, 5, 2, 6);
+    g.fillRect(23, 4, 2, 7);
+    // Red cross (heal symbol) top-right
+    g.fillStyle(0xFF3355);
+    g.fillRect(30, 3, 8, 3);
+    g.fillRect(33, 1, 3, 7);
+    g.generateTexture('building_cafeteria', 40, 40);
     g.destroy();
   }
 

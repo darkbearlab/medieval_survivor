@@ -83,7 +83,7 @@ export class UpgradePanel {
   _refresh() {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
-    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場' };
+    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '食堂' };
     const name = nameMap[b.type] || b.type;
     this.nameText.setText(name);
     this.levelText.setText(`等級 ${b.level}`);
@@ -95,12 +95,15 @@ export class UpgradePanel {
       this.statsText.setText(`防禦加成 +${b.defenseBonus}`);
     } else if (b.type === 'training') {
       this.statsText.setText(`攻擊加成 +${b.atkBonus}`);
+    } else if (b.type === 'cafeteria') {
+      this.statsText.setText(`回血 ${b.healRate}HP/s  範圍 ${b.healRange}`);
     } else {
       this.statsText.setText('');
     }
 
     const nextLv = b.level + 1;
-    const cfgTypeKey = b.type === 'smith' ? 'BLACKSMITH' : b.type === 'training' ? 'TRAINING_GROUND' : b.type.toUpperCase();
+    const typeKeyMap = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA' };
+    const cfgTypeKey = typeKeyMap[b.type] || b.type.toUpperCase();
     const upgCfg = CONFIG.BUILDINGS[cfgTypeKey]?.UPGRADE?.[nextLv];
 
     if (upgCfg) {
@@ -122,7 +125,8 @@ export class UpgradePanel {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
     const nextLv = b.level + 1;
-    const typeKey = b.type === 'smith' ? 'BLACKSMITH' : b.type === 'training' ? 'TRAINING_GROUND' : b.type.toUpperCase();
+    const typeKeyMap2 = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA' };
+    const typeKey = typeKeyMap2[b.type] || b.type.toUpperCase();
     const upgCfg = CONFIG.BUILDINGS[typeKey]?.UPGRADE?.[nextLv];
     if (!upgCfg) return;
 

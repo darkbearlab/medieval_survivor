@@ -13,7 +13,7 @@ export class BuildMenu {
     const s = this.scene;
     const { WIDTH: W, HEIGHT: H } = CONFIG;
     const panelW = 270;
-    const panelH = 380;
+    const panelH = 460;
     const cx = W / 2;
     const cy = H / 2;
     const py = cy - panelH / 2;
@@ -61,6 +61,13 @@ export class BuildMenu {
         desc: '攻擊 +10  HP 100',
         costText: '木材 ×12  石材 ×8',
         cost: CONFIG.BUILDINGS.TRAINING_GROUND.COST,
+      },
+      {
+        type: 'cafeteria',
+        name: '食堂',
+        desc: '附近回血 3HP/s  HP 90',
+        costText: '木材 ×10  石材 ×5',
+        cost: CONFIG.BUILDINGS.CAFETERIA.COST,
       },
     ];
 

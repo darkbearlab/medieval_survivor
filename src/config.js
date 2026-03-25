@@ -55,6 +55,13 @@ export const CONFIG = {
       TEXTURE: 'enemy_heavy',
       BUILDING_DAMAGE: 32,  // damage dealt to walls/towers
     },
+    MAGE: {
+      HP: 45, SPEED: 65, DAMAGE: 18, ATTACK_RATE: 2800, GOLD_REWARD: 14,
+      TEXTURE: 'enemy_mage',
+      RANGE: 280,
+      KEEP_MIN: 140,
+      EXPLOSION_RADIUS: 65,
+    },
   },
 
   TERRAIN: {
@@ -99,6 +106,12 @@ export const CONFIG = {
       COST: { wood: 12, stone: 8 },
       HP: 100,
       ATTACK_BONUS: 10,
+    },
+    CAFETERIA: {
+      COST: { wood: 10, stone: 5 },
+      HP: 90,
+      HEAL_RANGE: 100,
+      HEAL_RATE: 3,   // HP per second
     },
   },
 };
