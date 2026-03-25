@@ -1,4 +1,4 @@
-export const CONFIG = {
+export const CONFIG = { // mutable — runtime balance tweaks modify this directly
   WIDTH: 1280,
   HEIGHT: 720,
   WORLD_WIDTH: 2560,
@@ -127,3 +127,35 @@ export const CONFIG = {
     },
   },
 };
+
+// ── Runtime balance tuning ────────────────────────────────────────────────────
+
+export const BALANCE_SETTINGS = [
+  { label: '玩家 HP',     path: ['PLAYER',  'HP'],               min: 50,   max: 300,   step: 10,   def: 100   },
+  { label: '玩家速度',    path: ['PLAYER',  'SPEED'],            min: 80,   max: 300,   step: 10,   def: 180   },
+  { label: '攻擊間隔ms', path: ['PLAYER',  'ATTACK_RATE'],       min: 200,  max: 2000,  step: 100,  def: 800   },
+  { label: '強盜 HP',    path: ['ENEMIES', 'BANDIT', 'HP'],      min: 20,   max: 200,   step: 10,   def: 60    },
+  { label: '強盜速度',   path: ['ENEMIES', 'BANDIT', 'SPEED'],   min: 30,   max: 150,   step: 10,   def: 70    },
+  { label: '弓箭手 HP',  path: ['ENEMIES', 'ARCHER', 'HP'],      min: 10,   max: 100,   step: 5,    def: 30    },
+  { label: '重甲 HP',    path: ['ENEMIES', 'HEAVY',  'HP'],      min: 50,   max: 500,   step: 25,   def: 220   },
+  { label: '法師 HP',    path: ['ENEMIES', 'MAGE',   'HP'],      min: 10,   max: 100,   step: 5,    def: 45    },
+  { label: '準備時間s',  path: ['WAVES',   'PREP_TIME'],          min: 10,   max: 60,    step: 5,    def: 30    },
+  { label: '波次間隔s',  path: ['WAVES',   'BETWEEN_TIME'],       min: 5,    max: 30,    step: 5,    def: 15    },
+  { label: '資源重生ms', path: ['RESOURCES','RESPAWN_TIME'],      min: 5000, max: 60000, step: 5000, def: 20000 },
+];
+
+export function getConfigValue(path) {
+  let obj = CONFIG;
+  for (const key of path) obj = obj[key];
+  return obj;
+}
+
+export function setConfigValue(path, value) {
+  let obj = CONFIG;
+  for (let i = 0; i < path.length - 1; i++) obj = obj[path[i]];
+  obj[path[path.length - 1]] = value;
+}
+
+export function resetConfig() {
+  for (const s of BALANCE_SETTINGS) setConfigValue(s.path, s.def);
+}

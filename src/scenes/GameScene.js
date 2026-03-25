@@ -56,7 +56,8 @@ export class GameScene extends Phaser.Scene {
     this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120);
 
     // --- Terrain (impassable rocks) ---
-    this._createTerrain();
+    // Disabled: terrain caused enemies to get stuck. Class/method preserved for future use.
+    // this._createTerrain();
 
     // --- Day/Night system ---
     this.dayNightSystem = new DayNightSystem(this);

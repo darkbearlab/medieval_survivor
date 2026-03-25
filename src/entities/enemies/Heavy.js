@@ -41,7 +41,6 @@ export class Heavy extends Enemy {
   _findBuildingTarget() {
     let nearest = null;
     let nearestDist = Infinity;
-
     const check = (list) => {
       for (const b of list) {
         if (b.dead) continue;
@@ -49,9 +48,15 @@ export class Heavy extends Enemy {
         if (d < nearestDist) { nearestDist = d; nearest = b; }
       }
     };
-
-    check(this.scene.buildingSystem.walls);
-    check(this.scene.buildingSystem.towers);
+    const bs = this.scene.buildingSystem;
+    // Heavy attacks all building types — walls, towers and all other structures
+    check(bs.walls);
+    check(bs.towers);
+    check(bs.smiths);
+    check(bs.trainingGrounds);
+    check(bs.cafeterias);
+    check(bs.gatheringPosts);
+    check(bs.repairWorkshops);
     return nearest || this.scene.townCenter;
   }
 }

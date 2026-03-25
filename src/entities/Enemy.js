@@ -34,51 +34,65 @@ export class Enemy {
   }
 
   // ── Default (Bandit) behaviour ────────────────────────────────────────────
+  // Targets the nearest entity: player > any non-wall building > town center.
+  // Walls are not explicitly targeted but will be damaged via physics collision.
 
   update(time) {
     if (this.dead || !this.sprite.active) return;
 
-    const player = this.scene.player;
     const tc     = this.scene.townCenter;
+    const target = this._findNearestTarget();
+    const isPlayer = target === this.scene.player;
+    const isTc     = target === tc;
+    const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, target.x, target.y);
+    const atkRange = isPlayer ? 28 : isTc ? CONFIG.TOWN_CENTER.RADIUS + 16 : 32;
 
-    const pAlive = player && !player.isDead && player.sprite && player.sprite.active;
-    const pDist  = pAlive
-      ? Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y)
-      : Infinity;
-
-    if (pAlive && pDist < this.aggroRange) {
-      // ── Target player ──
-      if (pDist < 28) {
-        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
-        if (time - this.lastAttack > this.attackRate) {
-          this.lastAttack = time;
-          player.takeDamage(this.damage);
-          this._showDamageNumber(player.x, player.y - 30);
-        }
-      } else {
-        this._followPath(time, player.x, player.y);
-      }
-    } else {
-      // ── Target town center ──
-      const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, tc.x, tc.y);
-      if (dist < CONFIG.TOWN_CENTER.RADIUS + 16) {
-        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
-        if (time - this.lastAttack > this.attackRate) {
-          this.lastAttack = time;
+    if (dist < atkRange) {
+      if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+      if (time - this.lastAttack > this.attackRate) {
+        this.lastAttack = time;
+        if (isPlayer) {
+          this.scene.player.takeDamage(this.damage);
+          this._showDamageNumber(target.x, target.y - 30);
+        } else if (isTc) {
           tc.takeDamage(this.damage);
           EventBus.emit('town_hp_changed', tc.hp, tc.maxHp);
           this._showDamageNumber(tc.x, tc.y - 30);
           if (tc.hp <= 0 && !this.scene.isGameOver) this.scene.gameOver();
+        } else {
+          // Non-wall building: explicit melee (collision callback also fires, but 800ms throttle limits overlap)
+          target.takeDamage(this.damage);
+          this._showDamageNumber(target.x, target.y - 30);
         }
-      } else {
-        this._followPath(time, tc.x, tc.y);
       }
+    } else {
+      this._followPath(time, target.x, target.y);
     }
 
     this._drawHpBar();
   }
 
   // ── Shared helpers (used by subclasses) ───────────────────────────────────
+
+  /**
+   * Returns the nearest attackable entity: player (if alive), any non-wall
+   * building, or town center as last resort.  Walls are intentionally excluded
+   * — they are damaged automatically by the physics collision system.
+   */
+  _findNearestTarget() {
+    const bs = this.scene.buildingSystem;
+    let best = null, bestDist = Infinity;
+    const check = (entity) => {
+      if (!entity || entity.dead) return;
+      const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, entity.x, entity.y);
+      if (d < bestDist) { bestDist = d; best = entity; }
+    };
+    const player = this.scene.player;
+    if (player && !player.isDead) check(player);
+    const lists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops];
+    for (const list of lists) { if (list) for (const b of list) check(b); }
+    return best || this.scene.townCenter;
+  }
 
   /**
    * Move toward (tx, ty) using A* if available.
