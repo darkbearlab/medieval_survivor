@@ -90,5 +90,15 @@ export const CONFIG = {
         2: { COST: { wood: 8, stone: 10 }, RANGE: 280, ATTACK_RATE: 700 },
       },
     },
+    BLACKSMITH: {
+      COST: { wood: 15, stone: 10 },
+      HP: 120,
+      DEFENSE_BONUS: 5,
+    },
+    TRAINING_GROUND: {
+      COST: { wood: 12, stone: 8 },
+      HP: 100,
+      ATTACK_BONUS: 10,
+    },
   },
 };
