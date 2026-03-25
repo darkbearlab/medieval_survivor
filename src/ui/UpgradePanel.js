@@ -83,19 +83,25 @@ export class UpgradePanel {
   _refresh() {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
-    const name = b.type === 'wall' ? '城牆' : '箭塔';
+    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場' };
+    const name = nameMap[b.type] || b.type;
     this.nameText.setText(name);
     this.levelText.setText(`等級 ${b.level}`);
     this.hpText.setText(`HP: ${Math.ceil(b.hp)} / ${b.maxHp}`);
 
     if (b.type === 'tower') {
       this.statsText.setText(`射程 ${b.range}  速率 ${(1000 / b.attackRate).toFixed(1)}/s`);
+    } else if (b.type === 'smith') {
+      this.statsText.setText(`防禦加成 +${b.defenseBonus}`);
+    } else if (b.type === 'training') {
+      this.statsText.setText(`攻擊加成 +${b.atkBonus}`);
     } else {
       this.statsText.setText('');
     }
 
     const nextLv = b.level + 1;
-    const upgCfg = CONFIG.BUILDINGS[b.type.toUpperCase()]?.UPGRADE?.[nextLv];
+    const cfgTypeKey = b.type === 'smith' ? 'BLACKSMITH' : b.type === 'training' ? 'TRAINING_GROUND' : b.type.toUpperCase();
+    const upgCfg = CONFIG.BUILDINGS[cfgTypeKey]?.UPGRADE?.[nextLv];
 
     if (upgCfg) {
       const costStr = Object.entries(upgCfg.COST).map(([r, v]) => {
@@ -116,7 +122,8 @@ export class UpgradePanel {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
     const nextLv = b.level + 1;
-    const upgCfg = CONFIG.BUILDINGS[b.type.toUpperCase()]?.UPGRADE?.[nextLv];
+    const typeKey = b.type === 'smith' ? 'BLACKSMITH' : b.type === 'training' ? 'TRAINING_GROUND' : b.type.toUpperCase();
+    const upgCfg = CONFIG.BUILDINGS[typeKey]?.UPGRADE?.[nextLv];
     if (!upgCfg) return;
 
     const gameScene = this.scene.scene.get('GameScene');

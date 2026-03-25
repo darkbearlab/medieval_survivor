@@ -36,6 +36,8 @@ export class GameScene extends Phaser.Scene {
     this.wallsGroup      = this.physics.add.staticGroup();
     this.towersGroup     = this.physics.add.staticGroup();
     this.terrainGroup    = this.physics.add.staticGroup();
+    this.smithGroup      = this.physics.add.staticGroup();
+    this.trainingGroup   = this.physics.add.staticGroup();
 
     // --- Pathfinder (64×64 grid, 40px cells) ---
     const gridCells = CONFIG.WORLD_WIDTH / CONFIG.BUILDING_GRID;
@@ -112,12 +114,22 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.wallsGroup,   this._onEnemyHitWall,   null, this);
     this.physics.add.collider(this.enemies, this.towersGroup,  this._onEnemyHitTower,  null, this);
     this.physics.add.collider(this.enemies, this.terrainGroup);
+    this.physics.add.collider(this.enemies, this.smithGroup,    this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.trainingGroup, this._onEnemyHitSmithOrTraining, null, this);
 
     // Player blocked by walls, towers, terrain, and town center
     this.physics.add.collider(this.player.sprite, this.wallsGroup);
     this.physics.add.collider(this.player.sprite, this.towersGroup);
     this.physics.add.collider(this.player.sprite, this.terrainGroup);
     this.physics.add.collider(this.player.sprite, this.townCenter.sprite);
+    this.physics.add.collider(this.player.sprite, this.smithGroup);
+    this.physics.add.collider(this.player.sprite, this.trainingGroup);
+
+    // Enemy projectiles damage buildings
+    this.physics.add.overlap(this.enemyProjectiles, this.wallsGroup,    this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.towersGroup,   this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.smithGroup,    this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.trainingGroup, this._onEnemyProjHitBuilding, null, this);
 
     // --- EventBus subscriptions ---
     this._onBuildSelect = (type) => {
@@ -304,6 +316,28 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  _onEnemyHitSmithOrTraining(enemySprite, buildingSprite) {
+    if (!enemySprite.active || !buildingSprite.active) return;
+    const buildingEntity = buildingSprite.getData('entity');
+    if (buildingEntity && !buildingEntity.dead) {
+      const now = this.time.now;
+      if (!enemySprite._lastBuildingDmgTime || now - enemySprite._lastBuildingDmgTime > 800) {
+        enemySprite._lastBuildingDmgTime = now;
+        const enemyEntity = enemySprite.getData('entity');
+        const dmg = enemyEntity ? enemyEntity.damage : CONFIG.ENEMIES.BANDIT.DAMAGE;
+        buildingEntity.takeDamage(dmg);
+      }
+    }
+  }
+
+  _onEnemyProjHitBuilding(proj, buildingSprite) {
+    if (!proj.active || !buildingSprite.active) return;
+    const entity = buildingSprite.getData('entity');
+    const dmg = proj.getData('damage') || 10;
+    if (entity && !entity.dead) entity.takeDamage(dmg);
+    proj.destroy();
+  }
+
   _fireEnemyProjectile(x, y, targetSprite, damage) {
     const proj = this.enemyProjectiles.create(x, y, 'projectile');
     if (!proj || !proj.body) return;
@@ -367,6 +401,16 @@ export class GameScene extends Phaser.Scene {
         EventBus.emit('building_clicked', wall);
         return;
       }
+    }
+    for (const b of this.buildingSystem.smiths) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.trainingGrounds) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
     }
   }
 
@@ -441,7 +485,7 @@ export class GameScene extends Phaser.Scene {
         CONFIG.PLAYER.ATTACK_RANGE
       );
       if (target) {
-        this._fireProjectile(this.player.x, this.player.y, target);
+        this._fireProjectile(this.player.x, this.player.y, target, CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus);
         this.nextAttackTime = time + CONFIG.PLAYER.ATTACK_RATE;
       }
     }

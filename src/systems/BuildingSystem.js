@@ -2,12 +2,16 @@ import { CONFIG } from '../config.js';
 import { EventBus } from '../utils/EventBus.js';
 import { Wall } from '../entities/buildings/Wall.js';
 import { Tower } from '../entities/buildings/Tower.js';
+import { Blacksmith } from '../entities/buildings/Blacksmith.js';
+import { TrainingGround } from '../entities/buildings/TrainingGround.js';
 
 export class BuildingSystem {
   constructor(scene) {
     this.scene = scene;
     this.walls = [];
     this.towers = [];
+    this.smiths = [];
+    this.trainingGrounds = [];
     this.placingType = null;
     this.previewSprite = null;
     this._justStarted = false;  // prevent same-click placement
@@ -16,7 +20,8 @@ export class BuildingSystem {
   startPlacing(type) {
     this.cancelPlacing();
     this.placingType = type;
-    const texKey = type === 'wall' ? 'building_wall' : 'building_tower';
+    const texMap = { wall: 'building_wall', tower: 'building_tower', smith: 'building_smith', training: 'building_training' };
+    const texKey = texMap[type] || 'building_wall';
     this.previewSprite = this.scene.add.sprite(0, 0, texKey)
       .setAlpha(0.55)
       .setDepth(20)
@@ -58,7 +63,8 @@ export class BuildingSystem {
     worldX = this._snapToGrid(worldX);
     worldY = this._snapToGrid(worldY);
 
-    const typeKey = this.placingType.toUpperCase();
+    const typeKeyMap = { wall: 'WALL', tower: 'TOWER', smith: 'BLACKSMITH', training: 'TRAINING_GROUND' };
+    const typeKey = typeKeyMap[this.placingType] || this.placingType.toUpperCase();
     const cfg = CONFIG.BUILDINGS[typeKey];
     if (!cfg) return false;
 
@@ -91,6 +97,16 @@ export class BuildingSystem {
       this.towers.push(tower);
       this.scene.towersGroup.add(tower.sprite);
       tower.sprite.refreshBody();
+    } else if (this.placingType === 'smith') {
+      const smith = new Blacksmith(this.scene, worldX, worldY);
+      this.smiths.push(smith);
+      this.scene.smithGroup.add(smith.sprite);
+      smith.sprite.refreshBody();
+    } else if (this.placingType === 'training') {
+      const tg = new TrainingGround(this.scene, worldX, worldY);
+      this.trainingGrounds.push(tg);
+      this.scene.trainingGroup.add(tg.sprite);
+      tg.sprite.refreshBody();
     }
 
     return true;

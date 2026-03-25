@@ -16,6 +16,8 @@ export class BootScene extends Phaser.Scene {
     this._genEnemyArcher();
     this._genEnemyHeavy();
     this._genTerrainRock();
+    this._genBlacksmith();
+    this._genTrainingGround();
     this.scene.start('MenuScene');
   }
 
@@ -237,6 +239,70 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(0, 37, 40, 3);
     g.fillRect(37, 0, 3, 40);
     g.generateTexture('terrain_rock', 40, 40);
+    g.destroy();
+  }
+
+  _genBlacksmith() {
+    const g = this.make.graphics({ add: false });
+    // Base (stone floor)
+    g.fillStyle(0x555555);
+    g.fillRect(0, 0, 40, 40);
+    // Anvil base
+    g.fillStyle(0x333333);
+    g.fillRect(8, 24, 24, 10);
+    // Anvil top
+    g.fillStyle(0x222222);
+    g.fillRect(6, 18, 28, 9);
+    // Anvil horn
+    g.fillStyle(0x333333);
+    g.fillRect(28, 20, 8, 5);
+    // Fire glow
+    g.fillStyle(0xFF6600, 0.7);
+    g.fillRect(4, 10, 14, 10);
+    g.fillStyle(0xFF9900, 0.5);
+    g.fillRect(6, 8, 10, 6);
+    // Hammer
+    g.fillStyle(0x888888);
+    g.fillRect(24, 6, 4, 14);
+    g.fillStyle(0xAAAAAA);
+    g.fillRect(21, 4, 10, 6);
+    // Shield icon top-right
+    g.fillStyle(0x4488FF, 0.8);
+    g.fillRect(28, 2, 10, 8);
+    g.generateTexture('building_smith', 40, 40);
+    g.destroy();
+  }
+
+  _genTrainingGround() {
+    const g = this.make.graphics({ add: false });
+    // Base (dirt/sand floor)
+    g.fillStyle(0x8B6914);
+    g.fillRect(0, 0, 40, 40);
+    // Ground detail
+    g.fillStyle(0x7A5C0F, 0.5);
+    g.fillRect(4, 4, 32, 32);
+    // Training dummy pole
+    g.fillStyle(0x5C3310);
+    g.fillRect(18, 8, 4, 26);
+    // Dummy body
+    g.fillStyle(0xCC4444);
+    g.fillRect(12, 10, 16, 14);
+    // Dummy head
+    g.fillStyle(0xCC6633);
+    g.fillCircle(20, 8, 5);
+    // Crossed swords icon
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(4, 28, 14, 3);
+    g.fillRect(8, 25, 3, 9);
+    // Sword 2
+    g.fillStyle(0xBBBBBB);
+    g.fillRect(22, 28, 14, 3);
+    g.fillRect(29, 25, 3, 9);
+    // Attack icon (star/burst) top-right
+    g.fillStyle(0xFFAA00, 0.9);
+    g.fillRect(28, 2, 10, 4);
+    g.fillRect(30, 0, 6, 8);
+    g.generateTexture('building_training', 40, 40);
     g.destroy();
   }
 

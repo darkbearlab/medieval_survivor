@@ -13,6 +13,8 @@ export class Player {
     this.hp    = CONFIG.PLAYER.HP;
     this.maxHp = CONFIG.PLAYER.HP;
     this.isDead = false;
+    this.defense = 0;
+    this.attackBonus = 0;
   }
 
   update(cursors) {
@@ -42,7 +44,8 @@ export class Player {
 
   takeDamage(amount) {
     if (this.isDead) return;
-    this.hp = Math.max(0, this.hp - amount);
+    const effective = Math.max(1, amount - this.defense);
+    this.hp = Math.max(0, this.hp - effective);
     EventBus.emit('player_hp_changed', this.hp, this.maxHp);
 
     // Red tint flash

@@ -13,7 +13,7 @@ export class BuildMenu {
     const s = this.scene;
     const { WIDTH: W, HEIGHT: H } = CONFIG;
     const panelW = 270;
-    const panelH = 230;
+    const panelH = 380;
     const cx = W / 2;
     const cy = H / 2;
     const py = cy - panelH / 2;
@@ -47,6 +47,20 @@ export class BuildMenu {
         desc: '自動射擊  射程 200',
         costText: '木材 ×10  石材 ×5',
         cost: CONFIG.BUILDINGS.TOWER.COST,
+      },
+      {
+        type: 'smith',
+        name: '鐵匠鋪',
+        desc: '防禦 +5  HP 120',
+        costText: '木材 ×15  石材 ×10',
+        cost: CONFIG.BUILDINGS.BLACKSMITH.COST,
+      },
+      {
+        type: 'training',
+        name: '訓練場',
+        desc: '攻擊 +10  HP 100',
+        costText: '木材 ×12  石材 ×8',
+        cost: CONFIG.BUILDINGS.TRAINING_GROUND.COST,
       },
     ];
 
