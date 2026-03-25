@@ -20,6 +20,8 @@ export class BootScene extends Phaser.Scene {
     this._genTrainingGround();
     this._genEnemyMage();
     this._genCafeteria();
+    this._genGatheringPost();
+    this._genRepairWorkshop();
     this.scene.start('MenuScene');
   }
 
@@ -366,6 +368,66 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(30, 3, 8, 3);
     g.fillRect(33, 1, 3, 7);
     g.generateTexture('building_cafeteria', 40, 40);
+    g.destroy();
+  }
+
+  _genGatheringPost() {
+    const g = this.make.graphics({ add: false });
+    // Base (earthy brown)
+    g.fillStyle(0x7B5D35);
+    g.fillRect(0, 0, 40, 40);
+    g.fillStyle(0x9A7248);
+    g.fillRect(2, 2, 36, 36);
+    // Barn roof
+    g.fillStyle(0x8B2020);
+    g.fillTriangle(0, 18, 40, 18, 20, 4);
+    // Walls
+    g.fillStyle(0xD2A679);
+    g.fillRect(4, 18, 32, 18);
+    // Door
+    g.fillStyle(0x5C3310);
+    g.fillRect(16, 26, 8, 10);
+    // Wood icon top-left
+    g.fillStyle(0x5C3310);
+    g.fillRect(3, 3, 10, 3);
+    g.fillRect(3, 8, 10, 3);
+    // Stone icon top-right
+    g.fillStyle(0x777777);
+    g.fillCircle(34, 7, 4);
+    g.generateTexture('building_gathering', 40, 40);
+    g.destroy();
+  }
+
+  _genRepairWorkshop() {
+    const g = this.make.graphics({ add: false });
+    // Base
+    g.fillStyle(0x4A4A4A);
+    g.fillRect(0, 0, 40, 40);
+    g.fillStyle(0x666666);
+    g.fillRect(2, 2, 36, 36);
+    // Workbench
+    g.fillStyle(0x8B4513);
+    g.fillRect(6, 22, 28, 10);
+    g.fillStyle(0xA0522D);
+    g.fillRect(6, 20, 28, 4);
+    // Wrench handle
+    g.fillStyle(0xAAAAAA);
+    g.fillRect(11, 6, 4, 16);
+    // Wrench head
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(8, 4, 10, 5);
+    g.fillRect(8, 4, 3, 10);
+    g.fillRect(15, 4, 3, 10);
+    // Hammer
+    g.fillStyle(0x888888);
+    g.fillRect(23, 8, 3, 14);
+    g.fillStyle(0xAAAAAA);
+    g.fillRect(20, 6, 9, 5);
+    // Green cross (repair symbol)
+    g.fillStyle(0x44FF88);
+    g.fillRect(3, 3, 6, 2);
+    g.fillRect(5, 1, 2, 6);
+    g.generateTexture('building_repair', 40, 40);
     g.destroy();
   }
 

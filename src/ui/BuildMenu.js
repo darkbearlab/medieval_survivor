@@ -13,7 +13,7 @@ export class BuildMenu {
     const s = this.scene;
     const { WIDTH: W, HEIGHT: H } = CONFIG;
     const panelW = 270;
-    const panelH = 460;
+    const panelH = 540;
     const cx = W / 2;
     const cy = H / 2;
     const py = cy - panelH / 2;
@@ -69,6 +69,20 @@ export class BuildMenu {
         costText: '木材 ×10  石材 ×5',
         cost: CONFIG.BUILDINGS.CAFETERIA.COST,
       },
+      {
+        type: 'gathering',
+        name: '採集所',
+        desc: '自動收集範圍內資源',
+        costText: '木材 ×12  石材 ×8',
+        cost: CONFIG.BUILDINGS.GATHERING_POST.COST,
+      },
+      {
+        type: 'repair',
+        name: '維修工',
+        desc: '自動修復最低耐久建築',
+        costText: '木材 ×14  石材 ×10',
+        cost: CONFIG.BUILDINGS.REPAIR_WORKSHOP.COST,
+      },
     ];
 
     this.btnBgs = [];
@@ -97,7 +111,7 @@ export class BuildMenu {
       this.btnBgs.push({ bg: btnBg, cost: def.cost });
     });
 
-    const hint = s.add.text(cx, cy + panelH / 2 - 16, '[B] 關閉選單    放置時按 [ESC] 取消', {
+    const hint = s.add.text(cx, cy + panelH / 2 - 16, '[B] 關閉選單    放置時 [ESC] 或右鍵取消', {
       fontSize: '11px', color: '#555555',
     }).setOrigin(0.5).setDepth(101);
     this.elements.push(hint);

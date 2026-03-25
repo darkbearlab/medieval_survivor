@@ -5,6 +5,8 @@ import { Tower } from '../entities/buildings/Tower.js';
 import { Blacksmith } from '../entities/buildings/Blacksmith.js';
 import { TrainingGround } from '../entities/buildings/TrainingGround.js';
 import { Cafeteria } from '../entities/buildings/Cafeteria.js';
+import { GatheringPost } from '../entities/buildings/GatheringPost.js';
+import { RepairWorkshop } from '../entities/buildings/RepairWorkshop.js';
 
 export class BuildingSystem {
   constructor(scene) {
@@ -14,6 +16,8 @@ export class BuildingSystem {
     this.smiths = [];
     this.trainingGrounds = [];
     this.cafeterias = [];
+    this.gatheringPosts = [];
+    this.repairWorkshops = [];
     this.placingType = null;
     this.previewSprite = null;
     this._justStarted = false;  // prevent same-click placement
@@ -22,7 +26,7 @@ export class BuildingSystem {
   startPlacing(type) {
     this.cancelPlacing();
     this.placingType = type;
-    const texMap = { wall: 'building_wall', tower: 'building_tower', smith: 'building_smith', training: 'building_training', cafeteria: 'building_cafeteria' };
+    const texMap = { wall: 'building_wall', tower: 'building_tower', smith: 'building_smith', training: 'building_training', cafeteria: 'building_cafeteria', gathering: 'building_gathering', repair: 'building_repair' };
     const texKey = texMap[type] || 'building_wall';
     this.previewSprite = this.scene.add.sprite(0, 0, texKey)
       .setAlpha(0.55)
@@ -65,7 +69,7 @@ export class BuildingSystem {
     worldX = this._snapToGrid(worldX);
     worldY = this._snapToGrid(worldY);
 
-    const typeKeyMap = { wall: 'WALL', tower: 'TOWER', smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA' };
+    const typeKeyMap = { wall: 'WALL', tower: 'TOWER', smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP' };
     const typeKey = typeKeyMap[this.placingType] || this.placingType.toUpperCase();
     const cfg = CONFIG.BUILDINGS[typeKey];
     if (!cfg) return false;
@@ -114,6 +118,16 @@ export class BuildingSystem {
       this.cafeterias.push(cf);
       this.scene.cafeteriaGroup.add(cf.sprite);
       cf.sprite.refreshBody();
+    } else if (this.placingType === 'gathering') {
+      const gp = new GatheringPost(this.scene, worldX, worldY);
+      this.gatheringPosts.push(gp);
+      this.scene.gatheringGroup.add(gp.sprite);
+      gp.sprite.refreshBody();
+    } else if (this.placingType === 'repair') {
+      const rw = new RepairWorkshop(this.scene, worldX, worldY);
+      this.repairWorkshops.push(rw);
+      this.scene.repairGroup.add(rw.sprite);
+      rw.sprite.refreshBody();
     }
 
     return true;

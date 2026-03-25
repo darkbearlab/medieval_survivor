@@ -36,7 +36,6 @@ export class Archer extends Enemy {
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
           this.scene._fireEnemyProjectile(this.x, this.y, player.sprite, this.damage);
-          this._showDamageNumber(this.x, this.y - 28);
         }
       } else {
         // Chase player

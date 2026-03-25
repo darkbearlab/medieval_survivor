@@ -28,9 +28,9 @@ export const CONFIG = {
   RESOURCES: {
     COLLECT_RANGE: 90,
     TREE_COUNT: 28,
-    STONE_COUNT: 28,
-    TREE_YIELD: 7,
-    STONE_YIELD: 5,
+    STONE_COUNT: 18,
+    TREE_YIELD: 5,
+    STONE_YIELD: 3,
     RESPAWN_TIME: 20000,
   },
 
@@ -112,6 +112,18 @@ export const CONFIG = {
       HP: 90,
       HEAL_RANGE: 100,
       HEAL_RATE: 3,   // HP per second
+    },
+    GATHERING_POST: {
+      COST: { wood: 12, stone: 8 },
+      HP: 80,
+      RANGE: 130,         // collect radius
+      COLLECT_RATE: 800,  // ms per node
+    },
+    REPAIR_WORKSHOP: {
+      COST: { wood: 14, stone: 10 },
+      HP: 85,
+      SCAN_RATE: 3000,  // ms between target re-scans
+      REPAIR_RATE: 8,   // HP restored per second
     },
   },
 };

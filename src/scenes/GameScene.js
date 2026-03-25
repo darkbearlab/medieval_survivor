@@ -39,6 +39,8 @@ export class GameScene extends Phaser.Scene {
     this.smithGroup      = this.physics.add.staticGroup();
     this.trainingGroup   = this.physics.add.staticGroup();
     this.cafeteriaGroup  = this.physics.add.staticGroup();
+    this.gatheringGroup  = this.physics.add.staticGroup();
+    this.repairGroup     = this.physics.add.staticGroup();
     this.mageProjectiles = this.physics.add.group();
 
     // --- Pathfinder (64×64 grid, 40px cells) ---
@@ -82,6 +84,9 @@ export class GameScene extends Phaser.Scene {
     this.keyB   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
     this.keyESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
+    // Disable browser right-click context menu so right-click can be used in-game
+    this.input.mouse.disableContextMenu();
+
     // --- Pointer events ---
     this.input.on('pointermove', (pointer) => {
       if (this.buildingSystem.isPlacing()) {
@@ -92,12 +97,21 @@ export class GameScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (pointer) => {
       if (this.isGameOver) return;
-      // Ignore clicks on UI (UIScene handles its own input)
+      // Right-click cancels placement (or closes menus)
+      if (pointer.rightButtonDown()) {
+        if (this.buildingSystem.isPlacing()) {
+          this.buildingSystem.cancelPlacing();
+        } else {
+          EventBus.emit('close_build_menu');
+        }
+        return;
+      }
+      // Left-click: place building or select
       if (this.buildingSystem.isPlacing()) {
         const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         this.buildingSystem.tryPlace(world.x, world.y);
       } else {
-        // Try clicking on a tower for upgrade panel
+        // Try clicking on a building for upgrade panel
         const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         this._tryClickBuilding(world.x, world.y);
       }
@@ -119,6 +133,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.smithGroup,    this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.trainingGroup, this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.cafeteriaGroup, this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.gatheringGroup, this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.repairGroup,    this._onEnemyHitSmithOrTraining, null, this);
 
     // Player blocked by walls, towers, terrain, and town center
     this.physics.add.collider(this.player.sprite, this.wallsGroup);
@@ -128,6 +144,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player.sprite, this.smithGroup);
     this.physics.add.collider(this.player.sprite, this.trainingGroup);
     this.physics.add.collider(this.player.sprite, this.cafeteriaGroup);
+    this.physics.add.collider(this.player.sprite, this.gatheringGroup);
+    this.physics.add.collider(this.player.sprite, this.repairGroup);
 
     // Enemy projectiles damage buildings
     this.physics.add.overlap(this.enemyProjectiles, this.wallsGroup,     this._onEnemyProjHitBuilding, null, this);
@@ -135,6 +153,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.enemyProjectiles, this.smithGroup,     this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.trainingGroup,  this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.cafeteriaGroup, this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.gatheringGroup, this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.repairGroup,    this._onEnemyProjHitBuilding, null, this);
 
     // Mage projectiles explode on building contact
     this.physics.add.overlap(this.mageProjectiles, this.wallsGroup,     this._onMageProjHitBuilding, null, this);
@@ -142,6 +162,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.mageProjectiles, this.smithGroup,     this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.trainingGroup,  this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.cafeteriaGroup, this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.gatheringGroup, this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.repairGroup,    this._onMageProjHitBuilding, null, this);
 
     // --- EventBus subscriptions ---
     this._onBuildSelect = (type) => {
@@ -375,6 +397,8 @@ export class GameScene extends Phaser.Scene {
       this.buildingSystem.smiths,
       this.buildingSystem.trainingGrounds,
       this.buildingSystem.cafeterias,
+      this.buildingSystem.gatheringPosts,
+      this.buildingSystem.repairWorkshops,
     ];
     for (const list of lists) {
       for (const b of list) {
@@ -484,6 +508,16 @@ export class GameScene extends Phaser.Scene {
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
     }
     for (const b of this.buildingSystem.cafeterias) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.gatheringPosts) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.repairWorkshops) {
       if (b.dead) continue;
       const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
@@ -620,6 +654,20 @@ export class GameScene extends Phaser.Scene {
 
     // Building system (tower auto-attack)
     this.buildingSystem.update(time);
+
+    // Gathering post auto-collect
+    let gpCollected = false;
+    for (const gp of this.buildingSystem.gatheringPosts) {
+      if (!gp.dead) {
+        if (gp.update(delta, this.economy, this.resourceNodes)) gpCollected = true;
+      }
+    }
+    if (gpCollected) EventBus.emit('resources_updated', this.economy.resources);
+
+    // Repair workshop auto-repair
+    for (const rw of this.buildingSystem.repairWorkshops) {
+      if (!rw.dead) rw.update(time, delta, this.buildingSystem);
+    }
 
     // Auto-collect
     this._updateAutoCollect(delta);
