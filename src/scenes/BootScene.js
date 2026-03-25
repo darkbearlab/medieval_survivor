@@ -13,6 +13,9 @@ export class BootScene extends Phaser.Scene {
     this._genProjectile();
     this._genBuildingWall();
     this._genBuildingTower();
+    this._genEnemyArcher();
+    this._genEnemyHeavy();
+    this._genTerrainRock();
     this.scene.start('MenuScene');
   }
 
@@ -146,6 +149,94 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xFFFFFF, 0.6);
     g.fillCircle(3, 3, 2);
     g.generateTexture('projectile', 8, 8);
+    g.destroy();
+  }
+
+  _genEnemyArcher() {
+    const g = this.make.graphics({ add: false });
+    // Body (green cloak)
+    g.fillStyle(0x2d6a2d);
+    g.fillRect(8, 10, 14, 16);
+    // Head
+    g.fillStyle(0xFFCC80);
+    g.fillRect(10, 3, 11, 10);
+    // Hood
+    g.fillStyle(0x1a4a1a);
+    g.fillRect(8, 1, 15, 7);
+    // Bow (right side)
+    g.lineStyle(2, 0x8B5E3C);
+    g.beginPath();
+    g.moveTo(24, 4); g.lineTo(26, 16); g.strokePath();
+    g.lineStyle(1, 0xCCCCCC);
+    g.beginPath();
+    g.moveTo(24, 4); g.lineTo(24, 16); g.strokePath();
+    // Arrow
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(24, 9, 8, 1);
+    g.fillStyle(0xCC3300);
+    g.fillRect(31, 8, 3, 3);
+    // Legs
+    g.fillStyle(0x1a4a1a);
+    g.fillRect(8, 26, 6, 6);
+    g.fillRect(16, 26, 6, 6);
+    g.generateTexture('enemy_archer', 32, 32);
+    g.destroy();
+  }
+
+  _genEnemyHeavy() {
+    const g = this.make.graphics({ add: false });
+    // Heavy armour body (dark metal)
+    g.fillStyle(0x3a3a3a);
+    g.fillRect(5, 8, 22, 20);
+    // Chest plate highlight
+    g.fillStyle(0x555555);
+    g.fillRect(7, 10, 18, 14);
+    // Helmet
+    g.fillStyle(0x2a2a2a);
+    g.fillRect(6, 0, 20, 12);
+    // Visor slit
+    g.fillStyle(0xFF4400, 0.8);
+    g.fillRect(9, 5, 14, 3);
+    // Shield (left)
+    g.fillStyle(0x4a1a00);
+    g.fillRect(0, 8, 6, 18);
+    g.fillStyle(0xAA8800);
+    g.fillRect(1, 9, 4, 16);
+    // Weapon (right, big axe)
+    g.fillStyle(0x777777);
+    g.fillRect(27, 2, 4, 22);
+    g.fillStyle(0x999999);
+    g.fillRect(26, 2, 6, 7);
+    // Legs (heavy greaves)
+    g.fillStyle(0x2a2a2a);
+    g.fillRect(5, 28, 9, 6);
+    g.fillRect(18, 28, 9, 6);
+    g.generateTexture('enemy_heavy', 32, 34);
+    g.destroy();
+  }
+
+  _genTerrainRock() {
+    const g = this.make.graphics({ add: false });
+    // Dark rocky base
+    g.fillStyle(0x3a3a3a);
+    g.fillRect(0, 0, 40, 40);
+    // Rock face
+    g.fillStyle(0x4a4a4a);
+    g.fillRect(3, 3, 34, 34);
+    // Cracks
+    g.fillStyle(0x2a2a2a);
+    g.fillRect(10, 3, 2, 15);
+    g.fillRect(10, 18, 10, 2);
+    g.fillRect(25, 10, 2, 20);
+    // Light face highlight
+    g.fillStyle(0x666666, 0.5);
+    g.fillRect(4, 4, 12, 12);
+    g.fillRect(22, 5, 8, 8);
+    // Border shadow
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(0, 37, 40, 3);
+    g.fillRect(37, 0, 3, 40);
+    g.generateTexture('terrain_rock', 40, 40);
     g.destroy();
   }
 

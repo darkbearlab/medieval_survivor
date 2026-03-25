@@ -39,6 +39,10 @@ export class Wall {
     if (this.dead) return;
     this.dead = true;
     if (this.hpBar) { this.hpBar.destroy(); this.hpBar = null; }
+    // Unblock pathfinder cell
+    if (this.scene.pathFinder) {
+      this.scene.pathFinder.setBlocked(this.sprite.x, this.sprite.y, false);
+    }
     if (this.scene.wallsGroup) {
       this.scene.wallsGroup.remove(this.sprite, true, true);
     } else if (this.sprite.active) {

@@ -6,7 +6,8 @@ export class TownCenter {
     this.hp    = CONFIG.TOWN_CENTER.HP;
     this.maxHp = CONFIG.TOWN_CENTER.HP;
 
-    this.sprite = scene.add.sprite(x, y, 'town_center');
+    this.sprite = scene.physics.add.staticSprite(x, y, 'town_center');
+    this.sprite.setBodySize(50, 50);
     this.sprite.setDepth(3);
     this.sprite.setData('entity', this);
 

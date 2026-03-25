@@ -1,11 +1,13 @@
-import { CONFIG }          from '../config.js';
-import { EventBus }        from '../utils/EventBus.js';
-import { Player }          from '../entities/Player.js';
-import { ResourceNode }    from '../entities/ResourceNode.js';
-import { TownCenter }      from '../entities/buildings/TownCenter.js';
-import { WaveSystem }      from '../systems/WaveSystem.js';
-import { EconomySystem }   from '../systems/EconomySystem.js';
-import { BuildingSystem }  from '../systems/BuildingSystem.js';
+import { CONFIG }            from '../config.js';
+import { EventBus }          from '../utils/EventBus.js';
+import { Player }            from '../entities/Player.js';
+import { ResourceNode }      from '../entities/ResourceNode.js';
+import { TownCenter }        from '../entities/buildings/TownCenter.js';
+import { WaveSystem }        from '../systems/WaveSystem.js';
+import { EconomySystem }     from '../systems/EconomySystem.js';
+import { BuildingSystem }    from '../systems/BuildingSystem.js';
+import { DayNightSystem }    from '../systems/DayNightSystem.js';
+import { PathFinder }        from '../utils/PathFinder.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -28,10 +30,16 @@ export class GameScene extends Phaser.Scene {
     this.waveSystem = new WaveSystem(this);
 
     // --- Physics groups ---
-    this.enemies     = this.physics.add.group();
-    this.projectiles = this.physics.add.group();
-    this.wallsGroup  = this.physics.add.staticGroup();
-    this.towersGroup = this.physics.add.staticGroup();
+    this.enemies         = this.physics.add.group();
+    this.projectiles     = this.physics.add.group();
+    this.enemyProjectiles = this.physics.add.group();
+    this.wallsGroup      = this.physics.add.staticGroup();
+    this.towersGroup     = this.physics.add.staticGroup();
+    this.terrainGroup    = this.physics.add.staticGroup();
+
+    // --- Pathfinder (64×64 grid, 40px cells) ---
+    const gridCells = CONFIG.WORLD_WIDTH / CONFIG.BUILDING_GRID;
+    this.pathFinder = new PathFinder(CONFIG.BUILDING_GRID, gridCells, gridCells);
 
     // --- Building System ---
     this.buildingSystem = new BuildingSystem(this);
@@ -40,6 +48,12 @@ export class GameScene extends Phaser.Scene {
     this.townCenter    = new TownCenter(this, TOWN_CENTER.X, TOWN_CENTER.Y);
     this.resourceNodes = this._createResourceNodes();
     this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120);
+
+    // --- Terrain (impassable rocks) ---
+    this._createTerrain();
+
+    // --- Day/Night system ---
+    this.dayNightSystem = new DayNightSystem(this);
 
     // --- Auto-collect state ---
     this._collectProgress = new Map();   // node -> ms held
@@ -87,30 +101,30 @@ export class GameScene extends Phaser.Scene {
 
     // --- Collisions ---
     this.physics.add.overlap(
-      this.projectiles,
-      this.enemies,
-      this._onProjectileHitEnemy,
-      null,
-      this
+      this.projectiles, this.enemies,
+      this._onProjectileHitEnemy, null, this
     );
 
-    // Enemies collide with walls and deal damage on contact
-    this.physics.add.collider(
-      this.enemies,
-      this.wallsGroup,
-      this._onEnemyHitWall,
-      null,
-      this
+    // Enemy projectiles hit player
+    this.physics.add.overlap(
+      this.enemyProjectiles, this.player.sprite,
+      (proj) => {
+        if (!proj.active || this.player.isDead) return;
+        this.player.takeDamage(proj.getData('damage') || 10);
+        proj.destroy();
+      }, null, this
     );
 
-    // Enemies collide with towers and deal damage on contact
-    this.physics.add.collider(
-      this.enemies,
-      this.towersGroup,
-      this._onEnemyHitTower,
-      null,
-      this
-    );
+    // Enemies blocked by + damage walls/towers/terrain
+    this.physics.add.collider(this.enemies, this.wallsGroup,   this._onEnemyHitWall,   null, this);
+    this.physics.add.collider(this.enemies, this.towersGroup,  this._onEnemyHitTower,  null, this);
+    this.physics.add.collider(this.enemies, this.terrainGroup);
+
+    // Player blocked by walls, towers, terrain, and town center
+    this.physics.add.collider(this.player.sprite, this.wallsGroup);
+    this.physics.add.collider(this.player.sprite, this.towersGroup);
+    this.physics.add.collider(this.player.sprite, this.terrainGroup);
+    this.physics.add.collider(this.player.sprite, this.townCenter.sprite);
 
     // --- EventBus subscriptions ---
     this._onBuildSelect = (type) => {
@@ -136,6 +150,25 @@ export class GameScene extends Phaser.Scene {
 
     // --- Mini compass (decorative) ---
     this._drawMapEdgeMarkers();
+  }
+
+  // ─────────────────────────────────────────────
+  //  Terrain
+  // ─────────────────────────────────────────────
+
+  _createTerrain() {
+    const G = CONFIG.BUILDING_GRID;
+    // Each cluster: anchor (gx,gy) + 3 tiles in an L-shape
+    for (const { gx, gy } of CONFIG.TERRAIN.ROCK_CLUSTERS) {
+      const offsets = [[0,0],[1,0],[0,1]];
+      for (const [dx, dy] of offsets) {
+        const wx = (gx + dx) * G + G / 2;
+        const wy = (gy + dy) * G + G / 2;
+        const rock = this.terrainGroup.create(wx, wy, 'terrain_rock');
+        rock.setDepth(2).setImmovable(true).refreshBody();
+        this.pathFinder.setBlocked(wx, wy, true);
+      }
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -276,6 +309,19 @@ export class GameScene extends Phaser.Scene {
         wallEntity.takeDamage(dmg);
       }
     }
+  }
+
+  _fireEnemyProjectile(x, y, targetSprite, damage) {
+    const proj = this.physics.add.image(x, y, 'projectile');
+    proj.setDepth(12).setTint(0xFF6600);
+    proj.setData('damage', damage);
+    this.enemyProjectiles.add(proj);
+    const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
+    proj.setVelocity(
+      Math.cos(angle) * CONFIG.PROJECTILE.SPEED * 0.75,
+      Math.sin(angle) * CONFIG.PROJECTILE.SPEED * 0.75
+    );
+    this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN, () => { if (proj.active) proj.destroy(); });
   }
 
   _fireProjectile(x, y, targetSprite, damage = CONFIG.PROJECTILE.DAMAGE) {
@@ -427,6 +473,7 @@ export class GameScene extends Phaser.Scene {
 
   shutdown() {
     EventBus.off('build_select', this._onBuildSelect);
+    if (this.dayNightSystem) this.dayNightSystem.destroy();
     EventBus.removeAllListeners();
   }
 }

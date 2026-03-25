@@ -41,12 +41,29 @@ export const CONFIG = {
 
   ENEMIES: {
     BANDIT: {
-      HP: 60,
-      SPEED: 70,
-      DAMAGE: 8,
-      ATTACK_RATE: 1500,
-      GOLD_REWARD: 5,
+      HP: 60, SPEED: 70, DAMAGE: 8, ATTACK_RATE: 1500, GOLD_REWARD: 5,
+      TEXTURE: 'enemy_bandit',
     },
+    ARCHER: {
+      HP: 30, SPEED: 90, DAMAGE: 10, ATTACK_RATE: 2000, GOLD_REWARD: 8,
+      TEXTURE: 'enemy_archer',
+      RANGE: 300,        // ranged attack radius
+      KEEP_MIN: 150,     // minimum distance to player (backs away if closer)
+    },
+    HEAVY: {
+      HP: 220, SPEED: 42, DAMAGE: 12, ATTACK_RATE: 2200, GOLD_REWARD: 15,
+      TEXTURE: 'enemy_heavy',
+      BUILDING_DAMAGE: 32,  // damage dealt to walls/towers
+    },
+  },
+
+  TERRAIN: {
+    ROCK_CLUSTERS: [
+      { gx: 6,  gy: 6  }, { gx: 55, gy: 6  },
+      { gx: 6,  gy: 55 }, { gx: 55, gy: 55 },
+      { gx: 30, gy: 7  }, { gx: 30, gy: 54 },
+      { gx: 7,  gy: 30 }, { gx: 54, gy: 30 },
+    ],
   },
 
   PROJECTILE: {

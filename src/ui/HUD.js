@@ -93,6 +93,12 @@ export class HUD {
 
     this._drawPlayerHpBar(CONFIG.PLAYER.HP, CONFIG.PLAYER.HP);
 
+    // --- Day/Night indicator (top-right, below wave panel) ---
+    this.dayNightText = s.add.text(W - 18, 118, '☀ 白天', {
+      fontSize: '15px', color: '#FFD700',
+      stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(1, 0).setDepth(1);
+
     // --- Build hint (bottom, near center-right) ---
     this.buildHint = s.add.text(W / 2 + 10, H - 16, '[B] 建造選單', {
       fontSize: '13px',
@@ -119,11 +125,13 @@ export class HUD {
     this._onTownHp       = (hp, max) => this._drawHpBar(hp, max);
     this._onPlayerHp     = (hp, max) => this._drawPlayerHpBar(hp, max);
     this._onBuildFailed  = (msg) => this._showBuildFailed(msg);
+    this._onDayPhase     = (phase) => this._updateDayNight(phase);
 
     EventBus.on('resources_updated', this._onResources);
     EventBus.on('town_hp_changed',   this._onTownHp);
     EventBus.on('player_hp_changed', this._onPlayerHp);
     EventBus.on('build_failed',      this._onBuildFailed);
+    EventBus.on('day_phase_changed', this._onDayPhase);
   }
 
   _updateResources(res) {
@@ -223,10 +231,20 @@ export class HUD {
     }
   }
 
+  _updateDayNight(phase) {
+    if (!this.dayNightText) return;
+    if (phase === 'night') {
+      this.dayNightText.setText('☾ 夜晚').setColor('#6688FF');
+    } else {
+      this.dayNightText.setText('☀ 白天').setColor('#FFD700');
+    }
+  }
+
   destroy() {
     EventBus.off('resources_updated', this._onResources);
     EventBus.off('town_hp_changed',   this._onTownHp);
     EventBus.off('player_hp_changed', this._onPlayerHp);
     EventBus.off('build_failed',      this._onBuildFailed);
+    EventBus.off('day_phase_changed', this._onDayPhase);
   }
 }

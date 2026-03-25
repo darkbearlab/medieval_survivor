@@ -85,6 +85,7 @@ export class BuildingSystem {
       this.walls.push(wall);
       this.scene.wallsGroup.add(wall.sprite);
       wall.sprite.refreshBody();
+      if (this.scene.pathFinder) this.scene.pathFinder.setBlocked(worldX, worldY, true);
     } else if (this.placingType === 'tower') {
       const tower = new Tower(this.scene, worldX, worldY);
       this.towers.push(tower);

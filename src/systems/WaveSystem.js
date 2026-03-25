@@ -1,24 +1,34 @@
-import { CONFIG }  from '../config.js';
+import { CONFIG }   from '../config.js';
 import { EventBus } from '../utils/EventBus.js';
 import { Enemy }    from '../entities/Enemy.js';
+import { Archer }   from '../entities/enemies/Archer.js';
+import { Heavy }    from '../entities/enemies/Heavy.js';
+import { DayNightSystem } from './DayNightSystem.js';
 
+/**
+ * Wave pattern (repeating cycle of 3):
+ *   Cycle pos 1 — Day, Bandits only
+ *   Cycle pos 2 — Day, Bandits + Archers (40%)
+ *   Cycle pos 3 — NIGHT, all types, 1.8× enemy count
+ */
 export class WaveSystem {
   constructor(scene) {
-    this.scene        = scene;
-    this.currentWave  = 0;
-    this.phase        = 'prep';   // 'prep' | 'wave' | 'intermission'
-    this.countdown    = CONFIG.WAVES.PREP_TIME;
+    this.scene       = scene;
+    this.currentWave = 0;
+    this.phase       = 'prep';     // 'prep' | 'wave' | 'intermission'
+    this.countdown   = CONFIG.WAVES.PREP_TIME;
+  }
+
+  /** Returns 1, 2, or 3 for the current wave's position in the cycle. */
+  _cyclePos(wave) {
+    return ((wave - 1) % 3) + 1;
   }
 
   update(delta) {
-    // delta is in ms; convert to seconds for countdown
     this.countdown -= delta / 1000;
 
     if (this.phase === 'wave') {
-      // Check if all enemies defeated
-      if (this.scene.enemies.countActive(true) === 0) {
-        this._endWave();
-      }
+      if (this.scene.enemies.countActive(true) === 0) this._endWave();
     } else if (this.countdown <= 0) {
       this._startWave();
     }
@@ -29,8 +39,11 @@ export class WaveSystem {
     this.phase     = 'wave';
     this.countdown = 0;
 
-    const count = 3 + this.currentWave * 2;
-    this._spawnEnemies(count);
+    const pos   = this._cyclePos(this.currentWave);
+    const base  = 3 + this.currentWave * 2;
+    const count = pos === 3 ? Math.round(base * 1.8) : base;
+
+    this._spawnEnemies(count, pos);
     EventBus.emit('wave_started', this.currentWave);
   }
 
@@ -40,26 +53,40 @@ export class WaveSystem {
     EventBus.emit('wave_ended', this.currentWave);
   }
 
-  _spawnEnemies(count) {
+  _spawnEnemies(count, cyclePos) {
     const { WORLD_WIDTH, WORLD_HEIGHT } = CONFIG;
     const scene  = this.scene;
     const margin = 60;
 
     for (let i = 0; i < count; i++) {
-      const delay = i * 350;
-      this.scene.time.delayedCall(delay, () => {
+      this.scene.time.delayedCall(i * 320, () => {
         if (scene.isGameOver) return;
 
+        // Pick spawn edge
         const edge = Phaser.Math.Between(0, 3);
         let x, y;
         switch (edge) {
-          case 0: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = margin;                  break;
-          case 1: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = WORLD_HEIGHT - margin;   break;
-          case 2: x = margin;                  y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin); break;
-          case 3: x = WORLD_WIDTH - margin;    y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin); break;
+          case 0: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = margin; break;
+          case 1: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = WORLD_HEIGHT - margin; break;
+          case 2: x = margin; y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin); break;
+          default: x = WORLD_WIDTH - margin; y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin);
         }
 
-        const enemy = new Enemy(scene, x, y);
+        // Pick enemy type by cycle position
+        let enemy;
+        const r = Math.random();
+        if (cyclePos === 1) {
+          enemy = new Enemy(scene, x, y);              // Bandit only
+        } else if (cyclePos === 2) {
+          enemy = r < 0.40 ? new Archer(scene, x, y)  // 40% Archer
+                           : new Enemy(scene, x, y);  // 60% Bandit
+        } else {
+          // Night wave
+          if      (r < 0.30) enemy = new Archer(scene, x, y);
+          else if (r < 0.55) enemy = new Heavy(scene, x, y);
+          else               enemy = new Enemy(scene, x, y);
+        }
+
         scene.enemies.add(enemy.sprite);
       });
     }
