@@ -108,11 +108,7 @@ export class GameScene extends Phaser.Scene {
     // Enemy projectiles hit player
     this.physics.add.overlap(
       this.enemyProjectiles, this.player.sprite,
-      (proj) => {
-        if (!proj.active || this.player.isDead) return;
-        this.player.takeDamage(proj.getData('damage') || 10);
-        proj.destroy();
-      }, null, this
+      this._onEnemyProjectileHitPlayer, null, this
     );
 
     // Enemies blocked by + damage walls/towers/terrain
@@ -309,6 +305,17 @@ export class GameScene extends Phaser.Scene {
         wallEntity.takeDamage(dmg);
       }
     }
+  }
+
+  _onEnemyProjectileHitPlayer(proj, playerSprite) {
+    if (!proj.active || !playerSprite.active || this.player.isDead) return;
+    // Deactivate immediately so it cannot hit again this step
+    proj.setActive(false).setVisible(false);
+    if (proj.body) proj.body.enable = false;
+    const dmg = proj.getData('damage') || 10;
+    // Defer destroy to after the current physics step
+    this.time.delayedCall(0, () => { if (proj.scene) proj.destroy(); });
+    this.player.takeDamage(dmg);
   }
 
   _fireEnemyProjectile(x, y, targetSprite, damage) {

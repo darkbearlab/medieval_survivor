@@ -63,6 +63,7 @@ export class Player {
     this.isDead = true;
 
     this.sprite.setVelocity(0, 0);
+    if (this.sprite.body) this.sprite.body.enable = false;
 
     this.scene.tweens.add({
       targets: this.sprite,
