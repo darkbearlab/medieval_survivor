@@ -20,7 +20,7 @@ export class Heavy extends Enemy {
     const atkR   = isTc ? CONFIG.TOWN_CENTER.RADIUS + 20 : 32;
 
     if (dist < atkR) {
-      this.sprite.setVelocity(0, 0);
+      if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
       if (time - this.lastAttack > this.attackRate) {
         this.lastAttack = time;
         const dmg = isTc ? this.damage : CONFIG.ENEMIES.HEAVY.BUILDING_DAMAGE;

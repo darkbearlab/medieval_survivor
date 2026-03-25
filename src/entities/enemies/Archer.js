@@ -28,11 +28,11 @@ export class Archer extends Enemy {
       if (pDist < cfg.KEEP_MIN) {
         // Back away from player
         const angle = Phaser.Math.Angle.Between(player.x, player.y, this.sprite.x, this.sprite.y);
-        this.sprite.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
+        if (this.sprite.body) this.sprite.body.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
         this.sprite.setFlipX(Math.cos(angle) < 0);
       } else if (pDist < cfg.RANGE) {
         // In range — stop and fire
-        this.sprite.setVelocity(0, 0);
+        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
           this.scene._fireEnemyProjectile(this.x, this.y, player.sprite, this.damage);
@@ -46,7 +46,7 @@ export class Archer extends Enemy {
       // Player dead — melee attack town center
       const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, tc.x, tc.y);
       if (dist < CONFIG.TOWN_CENTER.RADIUS + 16) {
-        this.sprite.setVelocity(0, 0);
+        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
           tc.takeDamage(this.damage);

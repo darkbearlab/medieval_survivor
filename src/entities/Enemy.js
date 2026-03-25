@@ -49,7 +49,7 @@ export class Enemy {
     if (pAlive && pDist < this.aggroRange) {
       // ── Target player ──
       if (pDist < 28) {
-        this.sprite.setVelocity(0, 0);
+        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
           player.takeDamage(this.damage);
@@ -62,7 +62,7 @@ export class Enemy {
       // ── Target town center ──
       const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, tc.x, tc.y);
       if (dist < CONFIG.TOWN_CENTER.RADIUS + 16) {
-        this.sprite.setVelocity(0, 0);
+        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
           tc.takeDamage(this.damage);
@@ -114,8 +114,9 @@ export class Enemy {
   }
 
   _moveDirectTo(tx, ty) {
+    if (!this.sprite || !this.sprite.body) return;
     const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, tx, ty);
-    this.sprite.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
+    this.sprite.body.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
     this.sprite.setFlipX(Math.cos(angle) < 0);
   }
 

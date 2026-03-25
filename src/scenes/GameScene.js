@@ -105,11 +105,8 @@ export class GameScene extends Phaser.Scene {
       this._onProjectileHitEnemy, null, this
     );
 
-    // Enemy projectiles hit player
-    this.physics.add.overlap(
-      this.enemyProjectiles, this.player.sprite,
-      this._onEnemyProjectileHitPlayer, null, this
-    );
+    // Enemy projectile vs player: handled manually in update() to avoid
+    // Phaser group-vs-single-sprite overlap body lifecycle bugs.
 
     // Enemies blocked by + damage walls/towers/terrain
     this.physics.add.collider(this.enemies, this.wallsGroup,   this._onEnemyHitWall,   null, this);
@@ -307,24 +304,13 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  _onEnemyProjectileHitPlayer(proj, playerSprite) {
-    if (!proj.active || !playerSprite.active || this.player.isDead) return;
-    // Deactivate immediately so it cannot hit again this step
-    proj.setActive(false).setVisible(false);
-    if (proj.body) proj.body.enable = false;
-    const dmg = proj.getData('damage') || 10;
-    // Defer destroy to after the current physics step
-    this.time.delayedCall(0, () => { if (proj.scene) proj.destroy(); });
-    this.player.takeDamage(dmg);
-  }
-
   _fireEnemyProjectile(x, y, targetSprite, damage) {
-    const proj = this.physics.add.image(x, y, 'projectile');
+    const proj = this.enemyProjectiles.create(x, y, 'projectile');
+    if (!proj || !proj.body) return;
     proj.setDepth(12).setTint(0xFF6600);
     proj.setData('damage', damage);
-    this.enemyProjectiles.add(proj);
     const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
-    proj.setVelocity(
+    proj.body.setVelocity(
       Math.cos(angle) * CONFIG.PROJECTILE.SPEED * 0.75,
       Math.sin(angle) * CONFIG.PROJECTILE.SPEED * 0.75
     );
@@ -332,18 +318,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   _fireProjectile(x, y, targetSprite, damage = CONFIG.PROJECTILE.DAMAGE) {
-    const proj = this.physics.add.image(x, y, 'projectile');
+    const proj = this.projectiles.create(x, y, 'projectile');
+    if (!proj || !proj.body) return;
     proj.setDepth(12);
     proj.setData('isProjectile', true);
     proj.setData('damage', damage);
-    this.projectiles.add(proj);
-
     const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
-    proj.setVelocity(
+    proj.body.setVelocity(
       Math.cos(angle) * CONFIG.PROJECTILE.SPEED,
       Math.sin(angle) * CONFIG.PROJECTILE.SPEED
     );
-
     this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN, () => {
       if (proj.active) proj.destroy();
     });
@@ -459,6 +443,22 @@ export class GameScene extends Phaser.Scene {
       if (target) {
         this._fireProjectile(this.player.x, this.player.y, target);
         this.nextAttackTime = time + CONFIG.PLAYER.ATTACK_RATE;
+      }
+    }
+
+    // Enemy projectiles vs player (manual distance check — avoids physics overlap bug)
+    if (!this.player.isDead) {
+      const toHit = [];
+      this.enemyProjectiles.getChildren().forEach(proj => {
+        if (!proj.active) return;
+        const dist = Phaser.Math.Distance.Between(proj.x, proj.y, this.player.x, this.player.y);
+        if (dist < 16) toHit.push(proj);
+      });
+      for (const proj of toHit) {
+        const dmg = proj.getData('damage') || 10;
+        proj.destroy();
+        this.player.takeDamage(dmg);
+        if (this.player.isDead) break;
       }
     }
 

@@ -33,7 +33,7 @@ export class Player {
       vy *= 0.7071;
     }
 
-    this.sprite.setVelocity(vx, vy);
+    if (this.sprite.body) this.sprite.body.setVelocity(vx, vy);
 
     // Flip sprite to face movement direction
     if (vx < 0) this.sprite.setFlipX(true);
@@ -62,8 +62,10 @@ export class Player {
     if (this.isDead) return;
     this.isDead = true;
 
-    this.sprite.setVelocity(0, 0);
-    if (this.sprite.body) this.sprite.body.enable = false;
+    if (this.sprite.body) {
+      this.sprite.body.setVelocity(0, 0);
+      this.sprite.body.enable = false;
+    }
 
     this.scene.tweens.add({
       targets: this.sprite,
