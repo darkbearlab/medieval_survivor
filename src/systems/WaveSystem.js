@@ -4,6 +4,7 @@ import { Enemy, scaleCfg } from '../entities/Enemy.js';
 import { Archer }   from '../entities/enemies/Archer.js';
 import { Heavy }    from '../entities/enemies/Heavy.js';
 import { Mage }     from '../entities/enemies/Mage.js';
+import { Elite }    from '../entities/Elite.js';
 import { DayNightSystem } from './DayNightSystem.js';
 
 /**
@@ -46,6 +47,7 @@ export class WaveSystem {
     const count    = Math.max(1, Math.round(rawCount * CONFIG.WAVES.SPAWN_MULT));
 
     this._spawnEnemies(count, pos);
+    this._spawnElite(this.currentWave);
     EventBus.emit('wave_started', this.currentWave);
   }
 
@@ -53,6 +55,38 @@ export class WaveSystem {
     this.phase     = 'intermission';
     this.countdown = CONFIG.WAVES.BETWEEN_TIME;
     EventBus.emit('wave_ended', this.currentWave);
+  }
+
+  _spawnElite(wave) {
+    const { WORLD_WIDTH, WORLD_HEIGHT } = CONFIG;
+    const scene  = this.scene;
+    const margin = 60;
+
+    // Appears SPAWN_DELAY ms into the wave so players aren't immediately overwhelmed
+    scene.time.delayedCall(CONFIG.ELITE.SPAWN_DELAY, () => {
+      if (scene.isGameOver) return;
+
+      const edge = Phaser.Math.Between(0, 3);
+      let x, y;
+      switch (edge) {
+        case 0: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = margin;                break;
+        case 1: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = WORLD_HEIGHT - margin; break;
+        case 2: x = margin;                y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin); break;
+        default: x = WORLD_WIDTH - margin; y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin);
+      }
+
+      // Type pool grows with wave number
+      const types = wave >= 5
+        ? ['bandit', 'archer', 'heavy', 'mage']
+        : wave >= 3
+          ? ['bandit', 'archer', 'heavy']
+          : ['bandit', 'archer'];
+      const eliteType = types[Phaser.Math.Between(0, types.length - 1)];
+
+      const elite = new Elite(scene, x, y, eliteType, wave);
+      scene.enemies.add(elite.sprite);
+      scene._showEliteAlert(elite._nameTag ? elite._nameTag.text : '⚔ 精英敵人');
+    });
   }
 
   _spawnEnemies(count, cyclePos) {

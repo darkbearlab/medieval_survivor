@@ -10,6 +10,7 @@ import { DayNightSystem }    from '../systems/DayNightSystem.js';
 import { PathFinder }        from '../utils/PathFinder.js';
 import { Boss }              from '../entities/Boss.js';
 import { WeaponMount }      from '../entities/WeaponMount.js';
+import { Chest }            from '../entities/Chest.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -249,6 +250,11 @@ export class GameScene extends Phaser.Scene {
 
     // --- Game mode timer ---
     this.gameTimer = this.gameMode === 'timed' ? this.timeLimit * 1000 : null;
+
+    // --- Chests (dropped by elites) ---
+    this._chests         = [];
+    this._chestProgress  = new Map();   // chest → ms held
+    this._chestGraphics  = this.add.graphics().setDepth(18);
 
     // --- Weapon mounts (boss kill upgrades) ---
     this._weaponMounts = [];
@@ -950,6 +956,7 @@ export class GameScene extends Phaser.Scene {
 
     // Auto-collect
     this._updateAutoCollect(delta);
+    this._updateChestCollect(delta);
 
     // Game mode timer (timed mode only)
     if (this.gameTimer !== null) {
@@ -1013,6 +1020,80 @@ export class GameScene extends Phaser.Scene {
       duration: 400,
       yoyo: true,
       hold: 1200,
+      onComplete: () => alert.destroy(),
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  //  Chest (elite drop)
+  // ─────────────────────────────────────────────
+
+  _spawnChest(x, y) {
+    const chest = new Chest(this, x, y);
+    this._chests.push(chest);
+  }
+
+  _updateChestCollect(delta) {
+    this._chestGraphics.clear();
+    if (this.player.isDead || this._chests.length === 0) return;
+
+    const collectRange = CONFIG.RESOURCES.COLLECT_RANGE;
+    const collectTime  = CONFIG.ELITE.CHEST_COLLECT_TIME;
+
+    // Find nearest uncollected chest in range
+    let nearest = null, nearestDist = collectRange;
+    for (const chest of this._chests) {
+      if (chest.collected) continue;
+      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y);
+      if (d < nearestDist) { nearestDist = d; nearest = chest; }
+    }
+
+    // Reset progress for chests that are no longer nearest
+    for (const c of this._chestProgress.keys()) {
+      if (c !== nearest) {
+        c.hideLabel();
+        this._chestProgress.delete(c);
+      }
+    }
+
+    // Prune fully collected chests
+    this._chests = this._chests.filter(c => !c.collected);
+
+    if (!nearest) return;
+
+    nearest.showLabel();
+    const prev = this._chestProgress.get(nearest) || 0;
+    const next = prev + delta;
+    this._chestProgress.set(nearest, next);
+
+    // Draw gold progress ring around chest
+    const pct = Math.min(next / collectTime, 1);
+    this._chestGraphics.lineStyle(3, 0xFFCC00, 0.85);
+    this._chestGraphics.beginPath();
+    this._chestGraphics.arc(nearest.x, nearest.y, 22, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2, false);
+    this._chestGraphics.strokePath();
+
+    if (next >= collectTime) {
+      this._chestProgress.delete(nearest);
+      nearest.collect();
+      this._showUpgradeChoice();
+    }
+  }
+
+  _showEliteAlert(eliteName) {
+    const { WIDTH, HEIGHT } = CONFIG;
+    const alert = this.add.text(WIDTH / 2, HEIGHT / 2 + 20, eliteName, {
+      fontSize: '24px', fontFamily: 'Georgia, serif',
+      color: '#FFAA00', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
+
+    this.tweens.add({
+      targets: alert,
+      alpha: { from: 0, to: 1 },
+      y: HEIGHT / 2 + 2,
+      duration: 350,
+      yoyo: true,
+      hold: 1000,
       onComplete: () => alert.destroy(),
     });
   }

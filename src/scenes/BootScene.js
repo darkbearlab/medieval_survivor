@@ -30,6 +30,7 @@ export class BootScene extends Phaser.Scene {
     this._genFarm();
     this._genPlayerWarrior();
     this._genPlayerMage();
+    this._genChest();
     this.scene.start('MenuScene');
   }
 
@@ -621,6 +622,32 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0x7B4A1A, 1);
     g.strokeRect(1, 1, 38, 38);
     g.generateTexture('building_farm', 40, 40);
+    g.destroy();
+  }
+
+  _genChest() {
+    const g = this.make.graphics({ add: false });
+    // Body — dark brown wood
+    g.fillStyle(0x5C3A1E);
+    g.fillRect(3, 6, 26, 20);
+    // Lid — lighter brown
+    g.fillStyle(0x7A4F2A);
+    g.fillRect(3, 3, 26, 10);
+    // Gold rim border
+    g.lineStyle(2, 0xFFCC00, 1);
+    g.strokeRect(3, 3, 26, 23);
+    // Gold latch
+    g.fillStyle(0xFFCC00);
+    g.fillRect(12, 11, 8, 6);
+    g.fillStyle(0xFFEE44);
+    g.fillRect(14, 12, 4, 4);
+    // Corner bolts
+    g.fillStyle(0xFFCC00);
+    g.fillRect(4, 4, 4, 4);
+    g.fillRect(24, 4, 4, 4);
+    g.fillRect(4, 22, 4, 4);
+    g.fillRect(24, 22, 4, 4);
+    g.generateTexture('chest', 32, 32);
     g.destroy();
   }
 

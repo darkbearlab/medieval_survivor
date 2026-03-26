@@ -158,6 +158,18 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     MAGE_COST:    8,  // food consumed per allied mage spawn
   },
 
+  ELITE: {
+    HP_MULT:          2.5,
+    DAMAGE_MULT:      1.8,
+    SPEED_MULT:       0.90,
+    SCALE:            1.4,
+    TINT:             0xFFAA00,
+    BODY_SIZE:        36,
+    LOOT:             { wood: 5, stone: 3, gold: 8 },
+    CHEST_COLLECT_TIME: 1200,   // ms of proximity needed to open chest
+    SPAWN_DELAY:      5000,     // ms after wave starts before elite appears
+  },
+
   BOSS: {
     SPAWN_INTERVAL: 300, // seconds between boss spawns (5 minutes)
     HP_MULT:        5,
