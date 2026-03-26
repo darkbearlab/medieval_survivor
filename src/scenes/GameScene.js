@@ -87,6 +87,7 @@ export class GameScene extends Phaser.Scene {
     this.keyB   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
     this.keyESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.keyP   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    this.keyF   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
 
     // Disable browser right-click context menu so right-click can be used in-game
     this.input.mouse.disableContextMenu();
@@ -201,9 +202,16 @@ export class GameScene extends Phaser.Scene {
     // --- Mini compass (decorative) ---
     this._drawMapEdgeMarkers();
 
+    // --- Soldier rally state ---
+    this.soldierRallyMode = false;
+    const { WIDTH, HEIGHT } = CONFIG;
+    this._rallyIndicator = this.add.text(WIDTH / 2, 32, '', {
+      fontSize: '14px', color: '#44CCFF',
+      stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(200).setScrollFactor(0).setVisible(false);
+
     // --- Pause state ---
     this.isPaused = false;
-    const { WIDTH, HEIGHT } = CONFIG;
     this._pauseOverlay = this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x000000, 0.65)
       .setDepth(500).setScrollFactor(0).setVisible(false);
     this._pauseTitle = this.add.text(WIDTH / 2, HEIGHT / 2 - 24, 'PAUSED', {
@@ -562,6 +570,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────
+  //  Soldier rally
+  // ─────────────────────────────────────────────
+
+  _toggleSoldierRally() {
+    this.soldierRallyMode = !this.soldierRallyMode;
+    if (this._rallyIndicator) {
+      if (this.soldierRallyMode) {
+        this._rallyIndicator.setText('[F] 士兵集結模式 — 跟隨玩家').setVisible(true);
+      } else {
+        this._rallyIndicator.setText('[F] 士兵已解散 — 返回兵營').setVisible(true);
+        // Hide hint after 2 seconds
+        this.time.delayedCall(2000, () => {
+          if (this._rallyIndicator) this._rallyIndicator.setVisible(false);
+        });
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────
   //  Pause
   // ─────────────────────────────────────────────
 
@@ -625,6 +652,9 @@ export class GameScene extends Phaser.Scene {
     // P key: toggle pause (checked before pause guard so it always works)
     if (Phaser.Input.Keyboard.JustDown(this.keyP)) this._togglePause();
     if (this.isPaused) return;
+
+    // F key: toggle soldier rally (follow player)
+    if (Phaser.Input.Keyboard.JustDown(this.keyF)) this._toggleSoldierRally();
 
     // B key: toggle build menu
     if (Phaser.Input.Keyboard.JustDown(this.keyB)) {

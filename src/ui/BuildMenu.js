@@ -118,7 +118,7 @@ export class BuildMenu {
       this.btnBgs.push({ bg: btnBg, cost: def.cost });
     });
 
-    const hint = s.add.text(cx, cy + panelH / 2 - 16, '[B] 關閉選單    放置時 [ESC] 或右鍵取消', {
+    const hint = s.add.text(cx, cy + panelH / 2 - 16, '[B] 關閉    [ESC]/右鍵取消放置    [F] 集結士兵', {
       fontSize: '11px', color: '#555555',
     }).setOrigin(0.5).setDepth(101);
     this.elements.push(hint);

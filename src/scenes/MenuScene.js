@@ -50,7 +50,7 @@ export class MenuScene extends Phaser.Scene {
     // Controls hint
     this.add.text(WIDTH / 2, HEIGHT - 90, '操作說明', { fontSize: '15px', color: '#888888' }).setOrigin(0.5);
     this.add.text(WIDTH / 2, HEIGHT - 65,
-      'WASD 移動   靠近資源自動採集   [B] 建造   點擊建築升級   右鍵 / [ESC] 取消   [P] 暫停',
+      'WASD 移動   靠近資源自動採集   [B] 建造   點擊建築升級   右鍵/[ESC] 取消   [P] 暫停   [F] 集結士兵',
       { fontSize: '12px', color: '#666666' }).setOrigin(0.5);
 
     // Pulsing start button

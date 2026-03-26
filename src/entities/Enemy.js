@@ -45,7 +45,9 @@ export class Enemy {
     const isPlayer = target === this.scene.player;
     const isTc     = target === tc;
     const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, target.x, target.y);
-    const atkRange = isPlayer ? 28 : isTc ? CONFIG.TOWN_CENTER.RADIUS + 16 : 32;
+    const isSoldier = target && target.type === 'soldier';
+    // Soldiers: 40px — physics collider keeps bodies ~32px apart, so range must exceed that
+    const atkRange = isPlayer ? 28 : isTc ? CONFIG.TOWN_CENTER.RADIUS + 16 : isSoldier ? 40 : 32;
 
     if (dist < atkRange) {
       if (this.sprite.body) this.sprite.body.setVelocity(0, 0);

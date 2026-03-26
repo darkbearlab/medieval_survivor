@@ -34,23 +34,30 @@ export class Soldier {
   update(time) {
     if (this.dead || !this.sprite.active) return;
 
-    // Leash: return to barracks if strayed too far
+    // Determine leash point: player (rally mode) or barracks (default)
+    const player    = this.scene.player;
+    const rallyMode = this.scene.soldierRallyMode && player && !player.isDead;
+    const leashX    = rallyMode ? player.x : this.barracks.x;
+    const leashY    = rallyMode ? player.y : this.barracks.y;
+    const idleRange = rallyMode ? 60 : 40;  // tighter formation near player
+
     const leashDist = Phaser.Math.Distance.Between(
-      this.sprite.x, this.sprite.y,
-      this.barracks.x, this.barracks.y
+      this.sprite.x, this.sprite.y, leashX, leashY
     );
+
+    // Return to leash point if too far
     if (leashDist > CONFIG.SOLDIERS.LEASH_RANGE) {
-      this._moveDirectTo(this.barracks.x, this.barracks.y);
+      this._moveDirectTo(leashX, leashY);
       this._drawHpBar();
       return;
     }
 
     const target = this._findNearestEnemy(CONFIG.SOLDIERS.LEASH_RANGE * 1.5);
 
-    // No nearby enemy — idle near barracks
+    // No nearby enemy — maintain position near leash point
     if (!target) {
-      if (leashDist > 40) {
-        this._moveDirectTo(this.barracks.x, this.barracks.y);
+      if (leashDist > idleRange) {
+        this._moveDirectTo(leashX, leashY);
       } else {
         if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
       }
