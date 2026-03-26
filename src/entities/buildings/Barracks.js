@@ -1,5 +1,6 @@
-import { CONFIG }  from '../../config.js';
-import { Soldier } from '../Soldier.js';
+import { CONFIG }   from '../../config.js';
+import { EventBus } from '../../utils/EventBus.js';
+import { Soldier }  from '../Soldier.js';
 
 /**
  * Barracks — garrison building.
@@ -41,10 +42,19 @@ export class Barracks {
     // Update each living soldier
     for (const s of this.soldiers) s.update(time);
 
-    // Spawn a new soldier if under cap and cooldown elapsed
+    // Spawn a new soldier if under cap, cooldown elapsed, and enough food
     if (this.soldiers.length < this.maxSoldiers && time - this.lastSpawn > CONFIG.SOLDIERS.SPAWN_RATE) {
-      this.lastSpawn = time;
-      this._spawnSoldier();
+      const foodCost = CONFIG.FOOD.SOLDIER_COST;
+      if (foodCost > 0 && this.scene.economy.resources.food < foodCost) {
+        // Not enough food — wait for next cycle without resetting timer
+      } else {
+        this.lastSpawn = time;
+        if (foodCost > 0) {
+          this.scene.economy.resources.food -= foodCost;
+          EventBus.emit('resources_updated', this.scene.economy.resources);
+        }
+        this._spawnSoldier();
+      }
     }
 
     this._drawHpBar();

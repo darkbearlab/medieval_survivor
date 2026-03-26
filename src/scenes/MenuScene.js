@@ -139,6 +139,8 @@ export class MenuScene extends Phaser.Scene {
       0x66EE88, 0x66EE88, 0x66EE88,
       // 18-19: 匯率 — gold
       0xFFCC00, 0xFFCC00,
+      // 20-22: 糧食系統 — wheat
+      0xAADD44, 0xAADD44, 0xAADD44,
     ];
 
     // ── Render rows ────────────────────────────────────────────────────────

@@ -21,10 +21,11 @@ export class GatheringPost {
     this._drawHpBar();
   }
 
-  update(delta, economy, resourceNodes) {
+  update(delta, economy, resourceNodes, farms = []) {
     let collected = false;
-    for (const node of resourceNodes) {
-      if (node.depleted) { this.collectProgress.delete(node); continue; }
+    const targets = [...resourceNodes, ...farms];
+    for (const node of targets) {
+      if (node.depleted || node.dead) { this.collectProgress.delete(node); continue; }
       const dist = Phaser.Math.Distance.Between(this.x, this.y, node.x, node.y);
       if (dist > this.range) { this.collectProgress.delete(node); continue; }
       const prev = this.collectProgress.get(node) || 0;

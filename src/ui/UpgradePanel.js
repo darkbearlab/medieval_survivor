@@ -83,9 +83,22 @@ export class UpgradePanel {
   _refresh() {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
-    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '食堂', gathering: '採集所', repair: '維修工', barracks: '兵營', mage_tower: '法師塔' };
+    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '食堂', gathering: '採集所', repair: '維修工', barracks: '兵營', mage_tower: '法師塔', farm: '農田' };
     const name = nameMap[b.type] || b.type;
     this.nameText.setText(name);
+    this.hpText.setColor('#88FF88'); // reset color before farm override
+
+    if (b.type === 'farm') {
+      this.levelText.setText('無法升級');
+      this.hpText.setText(b.depleted ? '狀態：恢復中' : '狀態：可採集 ✓');
+      this.hpText.setColor(b.depleted ? '#FF8844' : '#44FF88');
+      this.statsText.setText(`產糧 ${CONFIG.BUILDINGS.FARM.FOOD_YIELD} 糧食/次\n恢復 ${CONFIG.BUILDINGS.FARM.REGEN_TIME / 1000}s`);
+      this.costText.setText('');
+      this.upgradeBtn.setVisible(false);
+      this.upgradeBtnText.setVisible(false);
+      return;
+    }
+
     this.levelText.setText(`等級 ${b.level}`);
     this.hpText.setText(`HP: ${Math.ceil(b.hp)} / ${b.maxHp}`);
 

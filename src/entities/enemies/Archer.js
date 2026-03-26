@@ -4,8 +4,8 @@ import { Enemy }    from '../Enemy.js';
 
 /**
  * Archer — low HP, ranged.
- * Priority: player (always chase) → soldiers → buildings (reduced damage) → TC (melee).
- * Backs away from player/soldiers if they get too close.
+ * Always attacks the nearest target (player, soldiers, buildings, TC).
+ * Backs away if target is within KEEP_MIN.
  */
 export class Archer extends Enemy {
   constructor(scene, x, y) {
@@ -16,66 +16,53 @@ export class Archer extends Enemy {
     if (this.dead || !this.sprite.active) return;
 
     const cfg = CONFIG.ENEMIES.ARCHER;
-    const tc  = this.scene.townCenter;
     const bs  = this.scene.buildingSystem;
+    const tc  = this.scene.townCenter;
 
-    // ── Priority 1: Player ───────────────────────────────────────────────────
-    let target          = null;
-    let isBuildingTarget = false;
+    // ── Find nearest target ──────────────────────────────────────────────────
+    let target = null;
+    let bestDist = Infinity;
+
+    const check = (entity) => {
+      if (!entity || entity.dead) return;
+      const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, entity.x, entity.y);
+      if (d < bestDist) { bestDist = d; target = entity; }
+    };
 
     const player = this.scene.player;
-    if (player && !player.isDead) {
-      target = player;
+    if (player && !player.isDead) check(player);
+
+    for (const list of [bs.soldiers, bs.alliedMages]) {
+      if (!list) continue;
+      for (const u of list) check(u);
     }
 
-    // ── Priority 2: Nearest alive soldier or allied mage ─────────────────────
-    if (!target) {
-      let bestDist = Infinity;
-      for (const list of [bs.soldiers, bs.alliedMages]) {
-        if (!list) continue;
-        for (const u of list) {
-          if (u.dead) continue;
-          const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, u.x, u.y);
-          if (d < bestDist) { bestDist = d; target = u; }
-        }
-      }
+    const bLists = [bs.walls, bs.towers, bs.smiths, bs.trainingGrounds,
+                    bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops,
+                    bs.barracks, bs.mageTowers];
+    for (const list of bLists) {
+      if (!list) continue;
+      for (const b of list) check(b);
     }
 
-    // ── Priority 3: Nearest non-wall building (reduced damage) ───────────────
-    if (!target) {
-      let bestDist = Infinity;
-      const bLists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops, bs.barracks, bs.mageTowers];
-      for (const list of bLists) {
-        if (!list) continue;
-        for (const b of list) {
-          if (b.dead) continue;
-          const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, b.x, b.y);
-          if (d < bestDist) { bestDist = d; target = b; }
-        }
-      }
-      if (target) isBuildingTarget = true;
-    }
+    check(tc);
 
-    // ── Priority 4: Town center (melee fallback) ──────────────────────────────
-    const isTc = !target;
-    if (isTc) target = tc;
+    if (!target) return;
 
     const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, target.x, target.y);
+    const isTc = target === tc;
 
-    if (isTc) {
-      if (dist < CONFIG.TOWN_CENTER.RADIUS + 16) {
-        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
-        if (time - this.lastAttack > this.attackRate) {
-          this.lastAttack = time;
-          tc.takeDamage(this.damage);
-          EventBus.emit('town_hp_changed', tc.hp, tc.maxHp);
-          if (tc.hp <= 0 && !this.scene.isGameOver) this.scene.gameOver();
-        }
-      } else {
-        this._followPath(time, tc.x, tc.y);
+    if (isTc && dist < CONFIG.TOWN_CENTER.RADIUS + 16) {
+      // TC melee fallback
+      if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+      if (time - this.lastAttack > this.attackRate) {
+        this.lastAttack = time;
+        tc.takeDamage(this.damage);
+        EventBus.emit('town_hp_changed', tc.hp, tc.maxHp);
+        if (tc.hp <= 0 && !this.scene.isGameOver) this.scene.gameOver();
       }
-    } else if (!isBuildingTarget && dist < cfg.KEEP_MIN) {
-      // Back away from player / soldier if too close
+    } else if (dist < cfg.KEEP_MIN) {
+      // Back away
       const angle = Phaser.Math.Angle.Between(target.x, target.y, this.sprite.x, this.sprite.y);
       if (this.sprite.body) this.sprite.body.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
       this.sprite.setFlipX(Math.cos(angle) < 0);
@@ -84,8 +71,7 @@ export class Archer extends Enemy {
       if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
       if (time - this.lastAttack > this.attackRate) {
         this.lastAttack = time;
-        const dmg = isBuildingTarget ? cfg.BUILDING_DAMAGE : this.damage;
-        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, dmg);
+        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, this.damage);
       }
     } else {
       this._followPath(time, target.x, target.y);

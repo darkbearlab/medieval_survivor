@@ -84,13 +84,13 @@ export class Soldier {
         this._moveDirectTo(target.x, target.y);
       }
     } else {
-      // Melee
-      if (dist < 28) {
+      // Melee — short-range projectile
+      const meleeCfg = CONFIG.SOLDIERS.MELEE;
+      if (dist < meleeCfg.RANGE) {
         if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
-          const entity = target.getData('entity');
-          if (entity) entity.takeDamage(this.damage);
+          this.scene._fireProjectile(this.sprite.x, this.sprite.y, target, this.damage);
         }
       } else {
         this._moveDirectTo(target.x, target.y);

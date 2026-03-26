@@ -298,7 +298,7 @@ export class GameScene extends Phaser.Scene {
     const collectRange = CONFIG.RESOURCES.COLLECT_RANGE;
     const collectTime  = CONFIG.AUTO_COLLECT.TIME;
 
-    // Find the single nearest non-depleted node within range
+    // Find the single nearest non-depleted node/farm within range
     let nearestNode = null;
     let nearestDist = collectRange;
 
@@ -310,6 +310,17 @@ export class GameScene extends Phaser.Scene {
       if (dist < nearestDist) {
         nearestDist = dist;
         nearestNode = node;
+      }
+    }
+
+    for (const farm of this.buildingSystem.farms) {
+      if (farm.dead || farm.depleted) continue;
+      const dist = Phaser.Math.Distance.Between(
+        this.player.x, this.player.y, farm.x, farm.y
+      );
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestNode = farm;
       }
     }
 
@@ -625,6 +636,11 @@ export class GameScene extends Phaser.Scene {
       const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
     }
+    for (const b of this.buildingSystem.farms) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -807,7 +823,7 @@ export class GameScene extends Phaser.Scene {
     let gpCollected = false;
     for (const gp of this.buildingSystem.gatheringPosts) {
       if (!gp.dead) {
-        if (gp.update(delta, this.economy, this.resourceNodes)) gpCollected = true;
+        if (gp.update(delta, this.economy, this.resourceNodes, this.buildingSystem.farms)) gpCollected = true;
       }
     }
     if (gpCollected) EventBus.emit('resources_updated', this.economy.resources);
@@ -815,6 +831,11 @@ export class GameScene extends Phaser.Scene {
     // Repair workshop auto-repair
     for (const rw of this.buildingSystem.repairWorkshops) {
       if (!rw.dead) rw.update(time, delta, this.buildingSystem);
+    }
+
+    // Farm regen
+    for (const farm of this.buildingSystem.farms) {
+      if (!farm.dead) farm.update(delta);
     }
 
     // Auto-collect

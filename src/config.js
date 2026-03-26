@@ -146,6 +146,16 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
         2: { COST: { wood: 15, stone: 20 }, HP_BONUS: 50 },
       },
     },
+    FARM: {
+      COST: { wood: 6 },
+      FOOD_YIELD: 10,     // food added per harvest
+      REGEN_TIME: 15000,  // ms to regenerate after harvest
+    },
+  },
+
+  FOOD: {
+    SOLDIER_COST: 5,  // food consumed per soldier spawn
+    MAGE_COST:    8,  // food consumed per allied mage spawn
   },
 
   SOLDIERS: {
@@ -156,7 +166,7 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       2: { MAX: 4, TYPE: 'mixed' },  // 2 melee + 2 ranged
     },
     MELEE: {
-      HP: 80, SPEED: 70, DAMAGE: 12, ATTACK_RATE: 1500,
+      HP: 80, SPEED: 70, DAMAGE: 12, ATTACK_RATE: 1500, RANGE: 75,
     },
     RANGED: {
       HP: 50, SPEED: 65, DAMAGE: 15, ATTACK_RATE: 2000,
@@ -207,6 +217,10 @@ export const BALANCE_SETTINGS = [
   // ── 金幣匯率 ──────────────────────────────────────────────────────────────
   { label: '1金=N木材',     path: ['EXCHANGE', 'WOOD_PER_GOLD'],        min: 0.5,  max: 10,    step: 0.5,  def: 2,    fmt: v => v.toFixed(1) },
   { label: '1金=N石材',     path: ['EXCHANGE', 'STONE_PER_GOLD'],       min: 0.5,  max: 10,    step: 0.5,  def: 1,    fmt: v => v.toFixed(1) },
+  // ── 糧食系統 ──────────────────────────────────────────────────────────────
+  { label: '農田產糧量',    path: ['BUILDINGS', 'FARM', 'FOOD_YIELD'],  min: 2,    max: 30,    step: 2,    def: 10    },
+  { label: '士兵糧食消耗',  path: ['FOOD', 'SOLDIER_COST'],             min: 0,    max: 30,    step: 1,    def: 5     },
+  { label: '法師糧食消耗',  path: ['FOOD', 'MAGE_COST'],                min: 0,    max: 30,    step: 1,    def: 8     },
 ];
 
 export function getConfigValue(path) {

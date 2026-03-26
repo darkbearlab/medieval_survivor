@@ -1,4 +1,5 @@
 import { CONFIG }    from '../../config.js';
+import { EventBus }  from '../../utils/EventBus.js';
 import { AlliedMage } from '../AlliedMage.js';
 
 /**
@@ -38,8 +39,17 @@ export class MageTower {
     for (const m of this.mages) m.update(time);
 
     if (this.mages.length < this.maxMages && time - this.lastSpawn > CONFIG.ALLIED_MAGES.SPAWN_RATE) {
-      this.lastSpawn = time;
-      this._spawnMage();
+      const foodCost = CONFIG.FOOD.MAGE_COST;
+      if (foodCost > 0 && this.scene.economy.resources.food < foodCost) {
+        // Not enough food — wait for next cycle without resetting timer
+      } else {
+        this.lastSpawn = time;
+        if (foodCost > 0) {
+          this.scene.economy.resources.food -= foodCost;
+          EventBus.emit('resources_updated', this.scene.economy.resources);
+        }
+        this._spawnMage();
+      }
     }
 
     this._drawHpBar();

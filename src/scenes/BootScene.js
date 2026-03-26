@@ -27,6 +27,7 @@ export class BootScene extends Phaser.Scene {
     this._genSoldierMelee();
     this._genSoldierRanged();
     this._genAlliedMage();
+    this._genFarm();
     this.scene.start('MenuScene');
   }
 
@@ -591,6 +592,33 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(8, 32, 6, 4);
     g.fillRect(18, 32, 6, 4);
     g.generateTexture('allied_mage', 32, 36);
+    g.destroy();
+  }
+
+  _genFarm() {
+    const g = this.make.graphics({ add: false });
+    // Soil background
+    g.fillStyle(0x8B5E3C);
+    g.fillRect(0, 0, 40, 40);
+    // Light soil fill
+    g.fillStyle(0xA0724A);
+    g.fillRect(2, 2, 36, 36);
+    // Crop rows (3 rows of wheat stalks)
+    g.fillStyle(0x4a7a1a);
+    for (let row = 0; row < 3; row++) {
+      const ry = 7 + row * 11;
+      for (let col = 0; col < 5; col++) {
+        const cx = 5 + col * 7;
+        g.fillRect(cx, ry + 3, 2, 6);   // stalk
+        g.fillStyle(0xDDB830);
+        g.fillRect(cx - 1, ry, 4, 4);   // grain head
+        g.fillStyle(0x4a7a1a);
+      }
+    }
+    // Fence border
+    g.lineStyle(2, 0x7B4A1A, 1);
+    g.strokeRect(1, 1, 38, 38);
+    g.generateTexture('building_farm', 40, 40);
     g.destroy();
   }
 

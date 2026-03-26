@@ -42,6 +42,7 @@ export class RepairWorkshop {
     const lists = [
       bs.walls, bs.towers, bs.smiths, bs.trainingGrounds,
       bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops,
+      bs.barracks, bs.mageTowers,
     ];
     for (const list of lists) {
       for (const b of list) {

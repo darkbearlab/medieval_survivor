@@ -65,7 +65,7 @@ export class GameOverScene extends Phaser.Scene {
     // Two columns: left = items 0-9, right = items 10-19
     const colX   = [WIDTH / 2 - 330, WIDTH / 2 + 10];
     const startY = 286;
-    const rowH   = 24;
+    const rowH   = 20;
 
     const catColors = [
       0x66DDFF, 0x66DDFF, 0x66DDFF, 0x66DDFF, 0x66DDFF,  // 0-4 玩家
@@ -74,6 +74,7 @@ export class GameOverScene extends Phaser.Scene {
       0xFFDD44, 0xFFDD44, 0xFFDD44,                         // 12-14 波次
       0x66EE88, 0x66EE88, 0x66EE88,                         // 15-17 資源
       0xFFCC00, 0xFFCC00,                                   // 18-19 匯率
+      0xAADD44, 0xAADD44, 0xAADD44,                         // 20-22 糧食
     ];
 
     BALANCE_SETTINGS.forEach((s, i) => {
