@@ -13,7 +13,7 @@ export class BuildMenu {
     const s = this.scene;
     const { WIDTH: W, HEIGHT: H } = CONFIG;
     const panelW = 270;
-    const panelH = 540;
+    const panelH = 650;
     const cx = W / 2;
     const cy = H / 2;
     const py = cy - panelH / 2;
@@ -83,11 +83,18 @@ export class BuildMenu {
         costText: '木材 ×14  石材 ×10',
         cost: CONFIG.BUILDINGS.REPAIR_WORKSHOP.COST,
       },
+      {
+        type: 'barracks',
+        name: '兵營',
+        desc: '自動生成士兵駐守',
+        costText: '木材 ×15  石材 ×12',
+        cost: CONFIG.BUILDINGS.BARRACKS.COST,
+      },
     ];
 
     this.btnBgs = [];
     defs.forEach((def, i) => {
-      const btnCy = py + 80 + i * 72;
+      const btnCy = py + 80 + i * 68;
       const btnBg = s.add.rectangle(cx, btnCy, 240, 58, 0x222222)
         .setDepth(101).setStrokeStyle(1, 0x666666).setInteractive({ useHandCursor: true });
       const nameTxt = s.add.text(cx - 105, btnCy - 12, def.name, {

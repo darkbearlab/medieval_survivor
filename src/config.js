@@ -53,8 +53,9 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     ARCHER: {
       HP: 30, SPEED: 90, DAMAGE: 10, ATTACK_RATE: 2000, GOLD_REWARD: 8,
       TEXTURE: 'enemy_archer',
-      RANGE: 300,        // ranged attack radius
-      KEEP_MIN: 150,     // minimum distance to player (backs away if closer)
+      RANGE: 300,           // ranged attack radius
+      KEEP_MIN: 150,        // minimum distance to player/soldier (backs away if closer)
+      BUILDING_DAMAGE: 3,   // reduced damage when firing at buildings
     },
     HEAVY: {
       HP: 220, SPEED: 42, DAMAGE: 12, ATTACK_RATE: 2200, GOLD_REWARD: 15,
@@ -130,6 +131,29 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       HP: 85,
       SCAN_RATE: 3000,  // ms between target re-scans
       REPAIR_RATE: 8,   // HP restored per second
+    },
+    BARRACKS: {
+      COST: { wood: 15, stone: 12 },
+      HP: 120,
+      UPGRADE: {
+        2: { COST: { wood: 12, stone: 15 }, HP_BONUS: 60 },
+      },
+    },
+  },
+
+  SOLDIERS: {
+    LEASH_RANGE: 200,   // max distance from barracks before retreating
+    SPAWN_RATE: 8000,   // ms between soldier spawns
+    LEVEL: {
+      1: { MAX: 2, TYPE: 'melee' },
+      2: { MAX: 4, TYPE: 'mixed' },  // 2 melee + 2 ranged
+    },
+    MELEE: {
+      HP: 80, SPEED: 70, DAMAGE: 12, ATTACK_RATE: 1500,
+    },
+    RANGED: {
+      HP: 50, SPEED: 65, DAMAGE: 15, ATTACK_RATE: 2000,
+      RANGE: 220, KEEP_MIN: 100,
     },
   },
 };

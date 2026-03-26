@@ -22,6 +22,9 @@ export class BootScene extends Phaser.Scene {
     this._genCafeteria();
     this._genGatheringPost();
     this._genRepairWorkshop();
+    this._genBarracks();
+    this._genSoldierMelee();
+    this._genSoldierRanged();
     this.scene.start('MenuScene');
   }
 
@@ -428,6 +431,100 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(3, 3, 6, 2);
     g.fillRect(5, 1, 2, 6);
     g.generateTexture('building_repair', 40, 40);
+    g.destroy();
+  }
+
+  _genBarracks() {
+    const g = this.make.graphics({ add: false });
+    // Base (stone + earth)
+    g.fillStyle(0x5a4a2a);
+    g.fillRect(0, 0, 40, 40);
+    g.fillStyle(0x7a6a3a);
+    g.fillRect(2, 2, 36, 36);
+    // Main building (darker stone walls)
+    g.fillStyle(0x555555);
+    g.fillRect(4, 12, 32, 24);
+    g.fillStyle(0x666666);
+    g.fillRect(5, 13, 30, 22);
+    // Roof / crenellations
+    g.fillStyle(0x444444);
+    g.fillRect(4, 6, 7, 10);
+    g.fillRect(14, 6, 7, 10);
+    g.fillRect(24, 6, 7, 10);
+    // Flag pole
+    g.fillStyle(0x888888);
+    g.fillRect(19, 2, 2, 12);
+    // Flag (blue = friendly)
+    g.fillStyle(0x2266CC);
+    g.fillRect(21, 2, 8, 6);
+    // Door
+    g.fillStyle(0x3a2a0a);
+    g.fillRect(16, 26, 8, 10);
+    // Soldier icon (silhouette)
+    g.fillStyle(0x1565C0, 0.9);
+    g.fillRect(8, 15, 4, 9);
+    g.fillRect(28, 15, 4, 9);
+    g.generateTexture('building_barracks', 40, 40);
+    g.destroy();
+  }
+
+  _genSoldierMelee() {
+    const g = this.make.graphics({ add: false });
+    // Body (teal/dark blue tunic — distinct from player blue)
+    g.fillStyle(0x0B6B6B);
+    g.fillRect(8, 10, 16, 16);
+    // Head
+    g.fillStyle(0xFFCC80);
+    g.fillRect(10, 3, 12, 10);
+    // Helmet (teal)
+    g.fillStyle(0x095555);
+    g.fillRect(8, 2, 16, 6);
+    // Shield (left, small)
+    g.fillStyle(0x4a2a00);
+    g.fillRect(3, 10, 5, 12);
+    g.fillStyle(0x886600);
+    g.fillRect(4, 11, 3, 10);
+    // Sword
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(24, 8, 3, 14);
+    g.fillStyle(0xAA8800);
+    g.fillRect(22, 12, 7, 3);
+    // Legs
+    g.fillStyle(0x095555);
+    g.fillRect(8, 26, 6, 6);
+    g.fillRect(18, 26, 6, 6);
+    g.generateTexture('soldier_melee', 32, 32);
+    g.destroy();
+  }
+
+  _genSoldierRanged() {
+    const g = this.make.graphics({ add: false });
+    // Body (teal light cloak)
+    g.fillStyle(0x1a7a7a);
+    g.fillRect(8, 10, 14, 16);
+    // Head
+    g.fillStyle(0xFFCC80);
+    g.fillRect(10, 3, 11, 10);
+    // Hood (teal)
+    g.fillStyle(0x0a5555);
+    g.fillRect(8, 1, 15, 7);
+    // Bow (right side)
+    g.lineStyle(2, 0x8B5E3C);
+    g.beginPath();
+    g.moveTo(24, 4); g.lineTo(26, 16); g.strokePath();
+    g.lineStyle(1, 0xCCCCCC);
+    g.beginPath();
+    g.moveTo(24, 4); g.lineTo(24, 16); g.strokePath();
+    // Arrow
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(24, 9, 8, 1);
+    g.fillStyle(0x0066CC);
+    g.fillRect(31, 8, 3, 3);
+    // Legs
+    g.fillStyle(0x0a5555);
+    g.fillRect(8, 26, 6, 6);
+    g.fillRect(16, 26, 6, 6);
+    g.generateTexture('soldier_ranged', 32, 32);
     g.destroy();
   }
 

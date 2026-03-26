@@ -41,6 +41,8 @@ export class GameScene extends Phaser.Scene {
     this.cafeteriaGroup  = this.physics.add.staticGroup();
     this.gatheringGroup  = this.physics.add.staticGroup();
     this.repairGroup     = this.physics.add.staticGroup();
+    this.barracksGroup   = this.physics.add.staticGroup();
+    this.soldiersGroup   = this.physics.add.group();
     this.mageProjectiles = this.physics.add.group();
 
     // --- Pathfinder (64×64 grid, 40px cells) ---
@@ -137,6 +139,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.cafeteriaGroup, this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.gatheringGroup, this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.repairGroup,    this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.barracksGroup,  this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.soldiersGroup);  // physical blocking only; damage via Enemy.update()
 
     // Player blocked by walls, towers, terrain, and town center
     this.physics.add.collider(this.player.sprite, this.wallsGroup);
@@ -148,6 +152,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player.sprite, this.cafeteriaGroup);
     this.physics.add.collider(this.player.sprite, this.gatheringGroup);
     this.physics.add.collider(this.player.sprite, this.repairGroup);
+    this.physics.add.collider(this.player.sprite, this.barracksGroup);
 
     // Enemy projectiles damage buildings
     this.physics.add.overlap(this.enemyProjectiles, this.wallsGroup,     this._onEnemyProjHitBuilding, null, this);
@@ -157,6 +162,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.enemyProjectiles, this.cafeteriaGroup, this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.gatheringGroup, this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.repairGroup,    this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.barracksGroup,  this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.soldiersGroup,  this._onEnemyProjHitBuilding, null, this);
 
     // Mage projectiles explode on building contact
     this.physics.add.overlap(this.mageProjectiles, this.wallsGroup,     this._onMageProjHitBuilding, null, this);
@@ -166,6 +173,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.mageProjectiles, this.cafeteriaGroup, this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.gatheringGroup, this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.repairGroup,    this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.barracksGroup,  this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.soldiersGroup,  this._onMageProjHitBuilding, null, this);
 
     // --- EventBus subscriptions ---
     this._onBuildSelect = (type) => {
@@ -414,6 +423,7 @@ export class GameScene extends Phaser.Scene {
       this.buildingSystem.cafeterias,
       this.buildingSystem.gatheringPosts,
       this.buildingSystem.repairWorkshops,
+      this.buildingSystem.barracks,
     ];
     for (const list of lists) {
       for (const b of list) {
@@ -421,6 +431,13 @@ export class GameScene extends Phaser.Scene {
         const d = Phaser.Math.Distance.Between(x, y, b.x, b.y);
         if (d < radius) b.takeDamage(damage);
       }
+    }
+
+    // Damage soldiers in blast radius
+    for (const s of this.buildingSystem.soldiers) {
+      if (s.dead) continue;
+      const d = Phaser.Math.Distance.Between(x, y, s.x, s.y);
+      if (d < radius) s.takeDamage(damage);
     }
   }
 
@@ -533,6 +550,11 @@ export class GameScene extends Phaser.Scene {
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
     }
     for (const b of this.buildingSystem.repairWorkshops) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.barracks) {
       if (b.dead) continue;
       const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }

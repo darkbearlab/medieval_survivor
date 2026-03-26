@@ -89,7 +89,8 @@ export class Enemy {
     };
     const player = this.scene.player;
     if (player && !player.isDead) check(player);
-    const lists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops];
+    if (bs.soldiers) for (const s of bs.soldiers) check(s);
+    const lists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops, bs.barracks];
     for (const list of lists) { if (list) for (const b of list) check(b); }
     return best || this.scene.townCenter;
   }
