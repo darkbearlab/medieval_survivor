@@ -42,8 +42,9 @@ export class Barracks {
     // Update each living soldier
     for (const s of this.soldiers) s.update(time);
 
-    // Spawn a new soldier if under cap, cooldown elapsed, and enough food
-    if (this.soldiers.length < this.maxSoldiers && time - this.lastSpawn > CONFIG.SOLDIERS.SPAWN_RATE) {
+    // Spawn a new soldier if non-deployed count is under cap, cooldown elapsed, and enough food
+    const nonDeployed = this.soldiers.filter(s => !s.deployed).length;
+    if (nonDeployed < this.maxSoldiers && time - this.lastSpawn > CONFIG.SOLDIERS.SPAWN_RATE) {
       const foodCost = CONFIG.FOOD.SOLDIER_COST;
       if (foodCost > 0 && this.scene.economy.resources.food < foodCost) {
         // Not enough food — wait for next cycle without resetting timer
@@ -98,12 +99,18 @@ export class Barracks {
     this._drawHpBar();
   }
 
+  _deployAll() {
+    for (const s of this.soldiers) {
+      if (!s.dead) s.deployed = true;
+    }
+  }
+
   _destroy() {
     if (this.dead) return;
     this.dead = true;
-    // Kill all soldiers from this barracks
+    // Kill non-deployed soldiers; deployed ones survive independently
     for (const s of this.soldiers) {
-      if (!s.dead) s._die();
+      if (!s.dead && !s.deployed) s._die();
     }
     this.soldiers = [];
     if (this.hpBar) { this.hpBar.destroy(); this.hpBar = null; }

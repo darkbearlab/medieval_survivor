@@ -11,6 +11,7 @@ export class AlliedMage {
     this.tower      = tower;   // MageTower reference (leash anchor)
     this.type       = 'allied_mage';
     this.dead       = false;
+    this.deployed   = false;   // true = permanently leashed to player
     this.lastAttack = 0;
 
     const cfg = CONFIG.ALLIED_MAGES;
@@ -33,9 +34,10 @@ export class AlliedMage {
 
     const player    = this.scene.player;
     const rallyMode = this.scene.soldierRallyMode && player && !player.isDead;
-    const leashX    = rallyMode ? player.x : this.tower.x;
-    const leashY    = rallyMode ? player.y : this.tower.y;
-    const idleRange = rallyMode ? 60 : 40;
+    const followPlayer = this.deployed || rallyMode;
+    const leashX    = (followPlayer && player) ? player.x : this.tower.x;
+    const leashY    = (followPlayer && player) ? player.y : this.tower.y;
+    const idleRange = followPlayer ? 60 : 40;
 
     const leashDist = Phaser.Math.Distance.Between(
       this.sprite.x, this.sprite.y, leashX, leashY

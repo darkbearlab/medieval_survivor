@@ -13,6 +13,7 @@ export class Soldier {
     this.combatType = combatType;
     this.type       = 'soldier';
     this.dead       = false;
+    this.deployed   = false;   // true = permanently leashed to player (detached from barracks)
     this.lastAttack = 0;
 
     const cfg = combatType === 'ranged' ? CONFIG.SOLDIERS.RANGED : CONFIG.SOLDIERS.MELEE;
@@ -37,9 +38,10 @@ export class Soldier {
     // Determine leash point: player (rally mode) or barracks (default)
     const player    = this.scene.player;
     const rallyMode = this.scene.soldierRallyMode && player && !player.isDead;
-    const leashX    = rallyMode ? player.x : this.barracks.x;
-    const leashY    = rallyMode ? player.y : this.barracks.y;
-    const idleRange = rallyMode ? 60 : 40;  // tighter formation near player
+    const followPlayer = this.deployed || rallyMode;
+    const leashX    = (followPlayer && player) ? player.x : this.barracks.x;
+    const leashY    = (followPlayer && player) ? player.y : this.barracks.y;
+    const idleRange = followPlayer ? 60 : 40;
 
     const leashDist = Phaser.Math.Distance.Between(
       this.sprite.x, this.sprite.y, leashX, leashY

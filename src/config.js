@@ -158,6 +158,15 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     MAGE_COST:    8,  // food consumed per allied mage spawn
   },
 
+  BOSS: {
+    SPAWN_INTERVAL: 300, // seconds between boss spawns (5 minutes)
+    HP_MULT:        5,
+    DAMAGE_MULT:    2.5,
+    SPEED_MULT:     0.85,
+    SCALE:          2.0,
+    LOOT: { wood: 20, stone: 15, gold: 25 },
+  },
+
   SOLDIERS: {
     LEASH_RANGE: 200,   // max distance from barracks before retreating
     SPAWN_RATE: 8000,   // ms between soldier spawns

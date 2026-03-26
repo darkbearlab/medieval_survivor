@@ -38,7 +38,8 @@ export class MageTower {
     this.mages = this.mages.filter(m => !m.dead);
     for (const m of this.mages) m.update(time);
 
-    if (this.mages.length < this.maxMages && time - this.lastSpawn > CONFIG.ALLIED_MAGES.SPAWN_RATE) {
+    const nonDeployed = this.mages.filter(m => !m.deployed).length;
+    if (nonDeployed < this.maxMages && time - this.lastSpawn > CONFIG.ALLIED_MAGES.SPAWN_RATE) {
       const foodCost = CONFIG.FOOD.MAGE_COST;
       if (foodCost > 0 && this.scene.economy.resources.food < foodCost) {
         // Not enough food — wait for next cycle without resetting timer
@@ -82,11 +83,17 @@ export class MageTower {
     this._drawHpBar();
   }
 
+  _deployAll() {
+    for (const m of this.mages) {
+      if (!m.dead) m.deployed = true;
+    }
+  }
+
   _destroy() {
     if (this.dead) return;
     this.dead = true;
     for (const m of this.mages) {
-      if (!m.dead) m._die();
+      if (!m.dead && !m.deployed) m._die();
     }
     this.mages = [];
     if (this.hpBar) { this.hpBar.destroy(); this.hpBar = null; }

@@ -18,7 +18,7 @@ export class UpgradePanel {
   _build() {
     const { WIDTH: W } = CONFIG;
     const panelW = 190;
-    const panelH = 210;
+    const panelH = 250;
     const cx = W - 20 - panelW / 2;
     const cy = 130 + panelH / 2;
 
@@ -45,6 +45,13 @@ export class UpgradePanel {
       fontSize: '12px', color: '#CCCC88',
     }).setOrigin(0.5).setDepth(101).setScrollFactor(0).setVisible(false);
 
+    this.deployBtn = this.scene.add.rectangle(cx, cy + panelH / 2 - 84, 150, 32, 0x1a3a6a)
+      .setDepth(101).setStrokeStyle(1, 0x4488CC)
+      .setScrollFactor(0).setInteractive({ useHandCursor: true }).setVisible(false);
+    this.deployBtnText = this.scene.add.text(cx, cy + panelH / 2 - 84, '帶走', {
+      fontSize: '14px', color: '#88CCFF',
+    }).setOrigin(0.5).setDepth(102).setScrollFactor(0).setVisible(false);
+
     this.upgradeBtn = this.scene.add.rectangle(cx, cy + panelH / 2 - 42, 150, 36, 0x2a5f2a)
       .setDepth(101).setStrokeStyle(1, 0x44AA44)
       .setScrollFactor(0).setInteractive({ useHandCursor: true }).setVisible(false);
@@ -57,13 +64,16 @@ export class UpgradePanel {
     }).setOrigin(0.5).setDepth(102).setScrollFactor(0).setInteractive({ useHandCursor: true }).setVisible(false);
 
     this.closeBtn.on('pointerdown', () => this.hide());
+    this.deployBtn.on('pointerover', () => this.deployBtn.setFillStyle(0x224488));
+    this.deployBtn.on('pointerout',  () => this.deployBtn.setFillStyle(0x1a3a6a));
+    this.deployBtn.on('pointerdown', () => this._doDeployAll());
     this.upgradeBtn.on('pointerover', () => this.upgradeBtn.setFillStyle(0x3a7f3a));
     this.upgradeBtn.on('pointerout', () => this.upgradeBtn.setFillStyle(0x2a5f2a));
     this.upgradeBtn.on('pointerdown', () => this._doUpgrade());
 
     this._allEls = [
       this.bg, this.nameText, this.levelText, this.hpText, this.statsText,
-      this.costText, this.upgradeBtn, this.upgradeBtnText, this.closeBtn,
+      this.costText, this.deployBtn, this.deployBtnText, this.upgradeBtn, this.upgradeBtnText, this.closeBtn,
     ];
   }
 
@@ -102,6 +112,10 @@ export class UpgradePanel {
     this.levelText.setText(`等級 ${b.level}`);
     this.hpText.setText(`HP: ${Math.ceil(b.hp)} / ${b.maxHp}`);
 
+    // Hide deploy button by default; barracks/mage_tower branches re-show it if applicable
+    this.deployBtn.setVisible(false);
+    this.deployBtnText.setVisible(false);
+
     if (b.type === 'tower') {
       this.statsText.setText(`射程 ${b.range}  速率 ${(1000 / b.attackRate).toFixed(1)}/s`);
     } else if (b.type === 'smith') {
@@ -115,11 +129,23 @@ export class UpgradePanel {
     } else if (b.type === 'repair') {
       this.statsText.setText(`修復速度 ${b.repairRate}HP/s`);
     } else if (b.type === 'barracks') {
-      const alive = b.soldiers.filter(s => !s.dead).length;
-      this.statsText.setText(`士兵 ${alive} / ${b.maxSoldiers}`);
+      const alive    = b.soldiers.filter(s => !s.dead).length;
+      const deployed = b.soldiers.filter(s => !s.dead && s.deployed).length;
+      const ready    = alive - deployed;
+      this.statsText.setText(`士兵 ${ready}/${b.maxSoldiers}  外出 ${deployed}`);
+      const hasReady = ready > 0;
+      this.deployBtn.setVisible(hasReady);
+      this.deployBtnText.setVisible(hasReady);
+      if (hasReady) this.deployBtnText.setText(`帶走 (${ready} 名)`);
     } else if (b.type === 'mage_tower') {
-      const alive = b.mages.filter(m => !m.dead).length;
-      this.statsText.setText(`法師 ${alive} / ${b.maxMages}`);
+      const alive    = b.mages.filter(m => !m.dead).length;
+      const deployed = b.mages.filter(m => !m.dead && m.deployed).length;
+      const ready    = alive - deployed;
+      this.statsText.setText(`法師 ${ready}/${b.maxMages}  外出 ${deployed}`);
+      const hasReady = ready > 0;
+      this.deployBtn.setVisible(hasReady);
+      this.deployBtnText.setVisible(hasReady);
+      if (hasReady) this.deployBtnText.setText(`帶走 (${ready} 名)`);
     } else {
       this.statsText.setText('');
     }
@@ -164,6 +190,15 @@ export class UpgradePanel {
     EventBus.emit('resources_updated', gameScene.economy.resources);
     b.upgrade();
     this._refresh();
+  }
+
+  _doDeployAll() {
+    const b = this.currentBuilding;
+    if (!b) return;
+    if (b.type === 'barracks' || b.type === 'mage_tower') {
+      b._deployAll();
+      this._refresh();
+    }
   }
 
   destroy() {

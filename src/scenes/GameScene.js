@@ -8,6 +8,7 @@ import { EconomySystem }     from '../systems/EconomySystem.js';
 import { BuildingSystem }    from '../systems/BuildingSystem.js';
 import { DayNightSystem }    from '../systems/DayNightSystem.js';
 import { PathFinder }        from '../utils/PathFinder.js';
+import { Boss }              from '../entities/Boss.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -221,6 +222,9 @@ export class GameScene extends Phaser.Scene {
       fontSize: '14px', color: '#44CCFF',
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5).setDepth(200).setScrollFactor(0).setVisible(false);
+
+    // --- Boss timer ---
+    this.bossTimer = CONFIG.BOSS.SPAWN_INTERVAL * 1000;
 
     // --- Pause state ---
     this.isPaused = false;
@@ -841,8 +845,56 @@ export class GameScene extends Phaser.Scene {
     // Auto-collect
     this._updateAutoCollect(delta);
 
+    // Boss timer
+    this.bossTimer -= delta;
+    if (this.bossTimer <= 0) {
+      this.bossTimer = CONFIG.BOSS.SPAWN_INTERVAL * 1000;
+      this._spawnBoss();
+    }
+
     // Wave system
     this.waveSystem.update(delta);
+  }
+
+  // ─────────────────────────────────────────────
+  //  Boss
+  // ─────────────────────────────────────────────
+
+  _spawnBoss() {
+    const { WORLD_WIDTH, WORLD_HEIGHT } = CONFIG;
+    const margin = 60;
+    const edge   = Phaser.Math.Between(0, 3);
+    let x, y;
+    switch (edge) {
+      case 0: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = margin;                break;
+      case 1: x = Phaser.Math.Between(margin, WORLD_WIDTH - margin); y = WORLD_HEIGHT - margin; break;
+      case 2: x = margin;                y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin); break;
+      default: x = WORLD_WIDTH - margin; y = Phaser.Math.Between(margin, WORLD_HEIGHT - margin);
+    }
+
+    const types    = ['bandit', 'archer', 'heavy', 'mage'];
+    const bossType = types[Phaser.Math.Between(0, types.length - 1)];
+    const boss     = new Boss(this, x, y, bossType);
+    this.enemies.add(boss.sprite);
+    this._showBossAlert(boss._nameTag ? boss._nameTag.text : '☠ Boss');
+  }
+
+  _showBossAlert(bossName) {
+    const { WIDTH, HEIGHT } = CONFIG;
+    const alert = this.add.text(WIDTH / 2, HEIGHT / 2 - 60, bossName, {
+      fontSize: '36px', fontFamily: 'Georgia, serif',
+      color: '#FF3300', stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
+
+    this.tweens.add({
+      targets: alert,
+      alpha: { from: 0, to: 1 },
+      y: HEIGHT / 2 - 80,
+      duration: 400,
+      yoyo: true,
+      hold: 1200,
+      onComplete: () => alert.destroy(),
+    });
   }
 
   shutdown() {

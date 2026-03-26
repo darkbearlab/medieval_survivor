@@ -1,5 +1,25 @@
 import { CONFIG, BALANCE_SETTINGS, getConfigValue, setConfigValue, resetConfig } from '../config.js';
 
+const BALANCE_KEY = 'medieval_survivor_balance';
+
+function loadBalanceFromStorage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BALANCE_KEY));
+    if (saved) {
+      BALANCE_SETTINGS.forEach(s => {
+        const key = s.path.join('.');
+        if (saved[key] !== undefined) setConfigValue(s.path, saved[key]);
+      });
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function saveBalanceToStorage() {
+  const data = {};
+  BALANCE_SETTINGS.forEach(s => { data[s.path.join('.')] = getConfigValue(s.path); });
+  localStorage.setItem(BALANCE_KEY, JSON.stringify(data));
+}
+
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super({ key: 'MenuScene' });
@@ -7,6 +27,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    loadBalanceFromStorage();
     const { WIDTH, HEIGHT } = CONFIG;
 
     // Background
@@ -177,6 +198,7 @@ export class MenuScene extends Phaser.Scene {
         const next = parseFloat(Math.max(s.min, getConfigValue(s.path) - s.step).toFixed(4));
         setConfigValue(s.path, next);
         valT.setText(s.fmt ? s.fmt(next) : String(next));
+        saveBalanceToStorage();
       });
       els.push(minusBg, minusT);
 
@@ -191,6 +213,7 @@ export class MenuScene extends Phaser.Scene {
         const next = parseFloat(Math.min(s.max, getConfigValue(s.path) + s.step).toFixed(4));
         setConfigValue(s.path, next);
         valT.setText(s.fmt ? s.fmt(next) : String(next));
+        saveBalanceToStorage();
       });
       els.push(plusBg, plusT);
     });
@@ -206,6 +229,7 @@ export class MenuScene extends Phaser.Scene {
     resetBg.on('pointerout',  () => resetBg.setFillStyle(0x222222));
     resetBg.on('pointerdown', () => {
       resetConfig();
+      localStorage.removeItem(BALANCE_KEY);
       BALANCE_SETTINGS.forEach((s, i) => {
         const v = getConfigValue(s.path);
         valueTxts[i].setText(s.fmt ? s.fmt(v) : String(v));
