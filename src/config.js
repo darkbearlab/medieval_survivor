@@ -167,6 +167,12 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     LOOT: { wood: 20, stone: 15, gold: 25 },
   },
 
+  GAME_MODES: {
+    TIMED: {
+      DURATION: 720,   // seconds (12 minutes) — adjust here to change timed mode length
+    },
+  },
+
   SOLDIERS: {
     LEASH_RANGE: 200,   // max distance from barracks before retreating
     SPAWN_RATE: 8000,   // ms between soldier spawns
@@ -193,6 +199,54 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     HP: 40, SPEED: 60, DAMAGE: 15, ATTACK_RATE: 3000,
     RANGE: 260, KEEP_MIN: 120,
     EXPLOSION_RADIUS: 60,
+  },
+
+  CHARACTERS: {
+    warrior: {
+      name:        '戰士',
+      tagline:     '鐵壁防禦・近距爆發',
+      lore:        '重甲加身，以鋼鐵意志守護村莊',
+      HP:          180,
+      SPEED:       155,
+      ATTACK_RANGE: 140,
+      ATTACK_RATE:  950,
+      DAMAGE_MULT:  1.5,
+      DEFENSE_PCT:  0.30,
+      AOE:          false,
+      AOE_RADIUS:   0,
+      TEXTURE:     'player_warrior',
+      ACCENT:      0xCC3311,
+    },
+    ranger: {
+      name:        '遊俠',
+      tagline:     '均衡全能・靈活機動',
+      lore:        '身手矯健，遊走於戰場每個角落',
+      HP:          100,
+      SPEED:       180,
+      ATTACK_RANGE: 260,
+      ATTACK_RATE:  800,
+      DAMAGE_MULT:  1.0,
+      DEFENSE_PCT:  0,
+      AOE:          false,
+      AOE_RADIUS:   0,
+      TEXTURE:     'player',
+      ACCENT:      0x229944,
+    },
+    mage: {
+      name:        '法師',
+      tagline:     '命中爆破・AoE 傷害',
+      lore:        '每一記攻擊皆引發魔法爆破',
+      HP:          75,
+      SPEED:       130,
+      ATTACK_RANGE: 240,
+      ATTACK_RATE:  1300,
+      DAMAGE_MULT:  0.9,
+      DEFENSE_PCT:  0,
+      AOE:          true,
+      AOE_RADIUS:   80,
+      TEXTURE:     'player_mage',
+      ACCENT:      0x8822EE,
+    },
   },
 };
 
