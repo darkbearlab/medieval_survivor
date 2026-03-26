@@ -27,6 +27,18 @@ export class MenuScene extends Phaser.Scene {
       fontSize: '16px', color: '#888888',
     }).setOrigin(0.5);
 
+    // High score
+    let bestWave = 0;
+    try {
+      const save = JSON.parse(localStorage.getItem('medieval_survivor_save')) || {};
+      bestWave = save.highScore?.waveReached || 0;
+    } catch (e) { /* ignore */ }
+    if (bestWave > 0) {
+      this.add.text(WIDTH / 2, HEIGHT / 2 - 22, `🏆 最高記錄：第 ${bestWave} 波`, {
+        fontSize: '14px', color: '#C8A832',
+      }).setOrigin(0.5);
+    }
+
     // Start button
     const btnBg = this.add.rectangle(WIDTH / 2, HEIGHT / 2 + 20, 220, 58, 0x8B0000)
       .setInteractive({ useHandCursor: true });

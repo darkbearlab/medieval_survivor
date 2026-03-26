@@ -139,6 +139,13 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
         2: { COST: { wood: 12, stone: 15 }, HP_BONUS: 60 },
       },
     },
+    MAGE_TOWER: {
+      COST: { wood: 20, stone: 15 },
+      HP: 100,
+      UPGRADE: {
+        2: { COST: { wood: 15, stone: 20 }, HP_BONUS: 50 },
+      },
+    },
   },
 
   SOLDIERS: {
@@ -155,6 +162,18 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       HP: 50, SPEED: 65, DAMAGE: 15, ATTACK_RATE: 2000,
       RANGE: 220, KEEP_MIN: 100,
     },
+  },
+
+  ALLIED_MAGES: {
+    LEASH_RANGE: 200,
+    SPAWN_RATE: 12000,   // slower than soldiers — mages are powerful
+    LEVEL: {
+      1: { MAX: 1 },
+      2: { MAX: 2 },
+    },
+    HP: 40, SPEED: 60, DAMAGE: 15, ATTACK_RATE: 3000,
+    RANGE: 260, KEEP_MIN: 120,
+    EXPLOSION_RADIUS: 60,
   },
 };
 

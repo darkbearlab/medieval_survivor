@@ -13,7 +13,7 @@ export class BuildMenu {
     const s = this.scene;
     const { WIDTH: W, HEIGHT: H } = CONFIG;
     const panelW = 270;
-    const panelH = 650;
+    const panelH = 680;
     const cx = W / 2;
     const cy = H / 2;
     const py = cy - panelH / 2;
@@ -90,11 +90,18 @@ export class BuildMenu {
         costText: '木材 ×15  石材 ×12',
         cost: CONFIG.BUILDINGS.BARRACKS.COST,
       },
+      {
+        type: 'mage_tower',
+        name: '法師塔',
+        desc: '召喚友方法師  AoE 攻擊敵人',
+        costText: '木材 ×20  石材 ×15',
+        cost: CONFIG.BUILDINGS.MAGE_TOWER.COST,
+      },
     ];
 
     this.btnBgs = [];
     defs.forEach((def, i) => {
-      const btnCy = py + 80 + i * 68;
+      const btnCy = py + 80 + i * 60;
       const btnBg = s.add.rectangle(cx, btnCy, 240, 58, 0x222222)
         .setDepth(101).setStrokeStyle(1, 0x666666).setInteractive({ useHandCursor: true });
       const nameTxt = s.add.text(cx - 105, btnCy - 12, def.name, {

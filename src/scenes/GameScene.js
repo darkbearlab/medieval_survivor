@@ -41,9 +41,12 @@ export class GameScene extends Phaser.Scene {
     this.cafeteriaGroup  = this.physics.add.staticGroup();
     this.gatheringGroup  = this.physics.add.staticGroup();
     this.repairGroup     = this.physics.add.staticGroup();
-    this.barracksGroup   = this.physics.add.staticGroup();
-    this.soldiersGroup   = this.physics.add.group();
-    this.mageProjectiles = this.physics.add.group();
+    this.barracksGroup        = this.physics.add.staticGroup();
+    this.soldiersGroup        = this.physics.add.group();
+    this.mageTowerGroup       = this.physics.add.staticGroup();
+    this.alliedMagesGroup     = this.physics.add.group();
+    this.alliedMageProjectiles = this.physics.add.group();
+    this.mageProjectiles      = this.physics.add.group();
 
     // --- Pathfinder (64×64 grid, 40px cells) ---
     const gridCells = CONFIG.WORLD_WIDTH / CONFIG.BUILDING_GRID;
@@ -140,8 +143,10 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.cafeteriaGroup, this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.gatheringGroup, this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.repairGroup,    this._onEnemyHitSmithOrTraining, null, this);
-    this.physics.add.collider(this.enemies, this.barracksGroup,  this._onEnemyHitSmithOrTraining, null, this);
-    this.physics.add.collider(this.enemies, this.soldiersGroup);  // physical blocking only; damage via Enemy.update()
+    this.physics.add.collider(this.enemies, this.barracksGroup,   this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.mageTowerGroup,  this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.soldiersGroup);   // physical blocking; damage via Enemy.update()
+    this.physics.add.collider(this.enemies, this.alliedMagesGroup); // physical blocking; damage via Enemy.update()
 
     // Player blocked by walls, towers, terrain, and town center
     this.physics.add.collider(this.player.sprite, this.wallsGroup);
@@ -154,6 +159,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player.sprite, this.gatheringGroup);
     this.physics.add.collider(this.player.sprite, this.repairGroup);
     this.physics.add.collider(this.player.sprite, this.barracksGroup);
+    this.physics.add.collider(this.player.sprite, this.mageTowerGroup);
 
     // Enemy projectiles damage buildings
     this.physics.add.overlap(this.enemyProjectiles, this.wallsGroup,     this._onEnemyProjHitBuilding, null, this);
@@ -163,8 +169,12 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.enemyProjectiles, this.cafeteriaGroup, this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.gatheringGroup, this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.repairGroup,    this._onEnemyProjHitBuilding, null, this);
-    this.physics.add.overlap(this.enemyProjectiles, this.barracksGroup,  this._onEnemyProjHitBuilding, null, this);
-    this.physics.add.overlap(this.enemyProjectiles, this.soldiersGroup,  this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.barracksGroup,    this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.mageTowerGroup,   this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.soldiersGroup,    this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.alliedMagesGroup, this._onEnemyProjHitBuilding, null, this);
+    // Allied mage projectiles damage enemies only (no friendly fire)
+    this.physics.add.overlap(this.alliedMageProjectiles, this.enemies, this._onAlliedMageProjHitEnemy, null, this);
 
     // Mage projectiles explode on building contact
     this.physics.add.overlap(this.mageProjectiles, this.wallsGroup,     this._onMageProjHitBuilding, null, this);
@@ -174,8 +184,10 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.mageProjectiles, this.cafeteriaGroup, this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.gatheringGroup, this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.repairGroup,    this._onMageProjHitBuilding, null, this);
-    this.physics.add.overlap(this.mageProjectiles, this.barracksGroup,  this._onMageProjHitBuilding, null, this);
-    this.physics.add.overlap(this.mageProjectiles, this.soldiersGroup,  this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.barracksGroup,    this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.mageTowerGroup,   this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.soldiersGroup,    this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.alliedMagesGroup, this._onMageProjHitBuilding, null, this);
 
     // --- EventBus subscriptions ---
     this._onBuildSelect = (type) => {
@@ -432,6 +444,7 @@ export class GameScene extends Phaser.Scene {
       this.buildingSystem.gatheringPosts,
       this.buildingSystem.repairWorkshops,
       this.buildingSystem.barracks,
+      this.buildingSystem.mageTowers,
     ];
     for (const list of lists) {
       for (const b of list) {
@@ -441,11 +454,11 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Damage soldiers in blast radius
-    for (const s of this.buildingSystem.soldiers) {
-      if (s.dead) continue;
-      const d = Phaser.Math.Distance.Between(x, y, s.x, s.y);
-      if (d < radius) s.takeDamage(damage);
+    // Damage mobile allied units in blast radius
+    for (const u of [...this.buildingSystem.soldiers, ...this.buildingSystem.alliedMages]) {
+      if (u.dead) continue;
+      const d = Phaser.Math.Distance.Between(x, y, u.x, u.y);
+      if (d < radius) u.takeDamage(damage);
     }
   }
 
@@ -457,6 +470,46 @@ export class GameScene extends Phaser.Scene {
       alpha: 0, scaleX: 1.5, scaleY: 1.5,
       duration: 380,
       onComplete: () => { outer.destroy(); inner.destroy(); },
+    });
+  }
+
+  _fireAlliedMageProjectile(x, y, target, damage) {
+    const proj = this.alliedMageProjectiles.create(x, y, 'projectile');
+    if (!proj || !proj.body) return;
+    proj.setDepth(12).setTint(0x00FFAA).setScale(1.5);
+    proj.setData('damage', damage);
+    const angle = Phaser.Math.Angle.Between(x, y, target.x, target.y);
+    const speed = CONFIG.PROJECTILE.SPEED * 0.5;
+    proj.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN * 1.8, () => {
+      if (proj.active) proj.destroy();
+    });
+  }
+
+  _onAlliedMageProjHitEnemy(proj, enemySprite) {
+    if (!proj.active || !enemySprite.active) return;
+    const dmg = proj.getData('damage') || CONFIG.ALLIED_MAGES.DAMAGE;
+    const px = proj.x, py = proj.y;
+    proj.destroy();
+    this._triggerAlliedExplosion(px, py, dmg);
+  }
+
+  _triggerAlliedExplosion(x, y, damage) {
+    const radius = CONFIG.ALLIED_MAGES.EXPLOSION_RADIUS;
+    // Teal/green explosion to distinguish from enemy mage (purple/orange)
+    const outer = this.add.circle(x, y, radius,        0x00CCAA, 0.55).setDepth(20);
+    const inner = this.add.circle(x, y, radius * 0.45, 0x00FFCC, 0.80).setDepth(21);
+    this.tweens.add({
+      targets: [outer, inner], alpha: 0, scaleX: 1.5, scaleY: 1.5, duration: 380,
+      onComplete: () => { outer.destroy(); inner.destroy(); },
+    });
+    // Damage enemies only — no friendly fire
+    this.enemies.getChildren().forEach(sprite => {
+      if (!sprite.active) return;
+      const entity = sprite.getData('entity');
+      if (!entity || entity.dead) return;
+      const d = Phaser.Math.Distance.Between(x, y, sprite.x, sprite.y);
+      if (d < radius) entity.takeDamage(damage);
     });
   }
 
@@ -563,6 +616,11 @@ export class GameScene extends Phaser.Scene {
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
     }
     for (const b of this.buildingSystem.barracks) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.mageTowers) {
       if (b.dead) continue;
       const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }

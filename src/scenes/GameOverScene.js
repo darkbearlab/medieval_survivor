@@ -8,6 +8,17 @@ export class GameOverScene extends Phaser.Scene {
 
   init(data) {
     this.waveReached = data.wave || 0;
+
+    const SAVE_KEY = 'medieval_survivor_save';
+    let save = {};
+    try { save = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { save = {}; }
+    const prevBest = save.highScore?.waveReached || 0;
+    this.isNewRecord = this.waveReached > prevBest;
+    this.prevBest = prevBest;
+    if (this.isNewRecord) {
+      save.highScore = { waveReached: this.waveReached };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    }
   }
 
   create() {
@@ -29,10 +40,21 @@ export class GameOverScene extends Phaser.Scene {
       fontSize: '28px', color: '#FFD700',
     }).setOrigin(0.5);
 
+    if (this.isNewRecord) {
+      this.add.text(WIDTH / 2, 236, '🏆 新紀錄！', {
+        fontSize: '15px', color: '#FFD700', fontStyle: 'bold',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5);
+    } else if (this.prevBest > 0) {
+      this.add.text(WIDTH / 2, 236, `最高記錄：第 ${this.prevBest} 波`, {
+        fontSize: '13px', color: '#888888',
+      }).setOrigin(0.5);
+    }
+
     // ── Separator ──────────────────────────────────────────────────────────
     const g = this.add.graphics();
     g.lineStyle(1, 0x444444, 0.8);
-    g.lineBetween(WIDTH / 2 - 340, 248, WIDTH / 2 + 340, 248);
+    g.lineBetween(WIDTH / 2 - 340, 256, WIDTH / 2 + 340, 256);
 
     // ── Balance settings grid ──────────────────────────────────────────────
     // 20 items displayed in 2 columns of 10, each row has name + value

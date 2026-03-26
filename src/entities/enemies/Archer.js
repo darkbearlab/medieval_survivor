@@ -28,20 +28,23 @@ export class Archer extends Enemy {
       target = player;
     }
 
-    // ── Priority 2: Nearest alive soldier ────────────────────────────────────
-    if (!target && bs.soldiers) {
+    // ── Priority 2: Nearest alive soldier or allied mage ─────────────────────
+    if (!target) {
       let bestDist = Infinity;
-      for (const s of bs.soldiers) {
-        if (s.dead) continue;
-        const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, s.x, s.y);
-        if (d < bestDist) { bestDist = d; target = s; }
+      for (const list of [bs.soldiers, bs.alliedMages]) {
+        if (!list) continue;
+        for (const u of list) {
+          if (u.dead) continue;
+          const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, u.x, u.y);
+          if (d < bestDist) { bestDist = d; target = u; }
+        }
       }
     }
 
     // ── Priority 3: Nearest non-wall building (reduced damage) ───────────────
     if (!target) {
       let bestDist = Infinity;
-      const bLists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops, bs.barracks];
+      const bLists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops, bs.barracks, bs.mageTowers];
       for (const list of bLists) {
         if (!list) continue;
         for (const b of list) {

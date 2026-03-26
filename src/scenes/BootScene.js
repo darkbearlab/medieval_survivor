@@ -23,8 +23,10 @@ export class BootScene extends Phaser.Scene {
     this._genGatheringPost();
     this._genRepairWorkshop();
     this._genBarracks();
+    this._genMageTower();
     this._genSoldierMelee();
     this._genSoldierRanged();
+    this._genAlliedMage();
     this.scene.start('MenuScene');
   }
 
@@ -525,6 +527,70 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(8, 26, 6, 6);
     g.fillRect(16, 26, 6, 6);
     g.generateTexture('soldier_ranged', 32, 32);
+    g.destroy();
+  }
+
+  _genMageTower() {
+    const g = this.make.graphics({ add: false });
+    // Base (dark stone)
+    g.fillStyle(0x2a1a3a);
+    g.fillRect(0, 0, 40, 40);
+    g.fillStyle(0x3a2a4a);
+    g.fillRect(2, 2, 36, 36);
+    // Tower body (tall)
+    g.fillStyle(0x4a3a5a);
+    g.fillRect(8, 8, 24, 28);
+    // Tower top (crenellations)
+    g.fillStyle(0x3a2a4a);
+    g.fillRect(6, 4, 7, 8);
+    g.fillRect(16, 4, 7, 8);
+    g.fillRect(27, 4, 7, 8);
+    // Magic orb at top (glowing purple)
+    g.fillStyle(0xCC44FF, 0.9);
+    g.fillCircle(20, 6, 5);
+    g.fillStyle(0xFFAAFF, 0.7);
+    g.fillCircle(19, 5, 2);
+    // Window slits (glowing)
+    g.fillStyle(0x8800CC, 0.8);
+    g.fillRect(16, 14, 8, 5);
+    g.fillRect(16, 24, 8, 5);
+    // Flag pole
+    g.fillStyle(0x888888);
+    g.fillRect(19, 0, 2, 8);
+    // Purple flag
+    g.fillStyle(0x8800AA);
+    g.fillRect(21, 0, 7, 5);
+    g.generateTexture('building_mage_tower', 40, 40);
+    g.destroy();
+  }
+
+  _genAlliedMage() {
+    const g = this.make.graphics({ add: false });
+    // Robe (lighter purple/teal — distinct from enemy mage which is deep purple)
+    g.fillStyle(0x3a5a7a);
+    g.fillRect(8, 14, 16, 18);
+    // Head
+    g.fillStyle(0xFFD0A0);
+    g.fillRect(10, 6, 12, 10);
+    // Hat brim (teal)
+    g.fillStyle(0x1a4a5a);
+    g.fillRect(7, 8, 18, 4);
+    // Hat cone
+    g.fillStyle(0x1a4a5a);
+    g.fillTriangle(10, 8, 22, 8, 16, 0);
+    // Staff (lighter)
+    g.fillStyle(0x7a8a14);
+    g.fillRect(25, 6, 3, 22);
+    // Magic orb — teal/green (friendly) instead of enemy blue
+    g.fillStyle(0x00FFAA, 0.9);
+    g.fillCircle(26, 5, 4);
+    g.fillStyle(0xAAFFFF, 0.5);
+    g.fillCircle(25, 4, 2);
+    // Legs
+    g.fillStyle(0x1a4a5a);
+    g.fillRect(8, 32, 6, 4);
+    g.fillRect(18, 32, 6, 4);
+    g.generateTexture('allied_mage', 32, 36);
     g.destroy();
   }
 

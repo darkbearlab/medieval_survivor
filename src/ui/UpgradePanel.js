@@ -83,7 +83,7 @@ export class UpgradePanel {
   _refresh() {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
-    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '食堂', gathering: '採集所', repair: '維修工', barracks: '兵營' };
+    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '食堂', gathering: '採集所', repair: '維修工', barracks: '兵營', mage_tower: '法師塔' };
     const name = nameMap[b.type] || b.type;
     this.nameText.setText(name);
     this.levelText.setText(`等級 ${b.level}`);
@@ -104,12 +104,15 @@ export class UpgradePanel {
     } else if (b.type === 'barracks') {
       const alive = b.soldiers.filter(s => !s.dead).length;
       this.statsText.setText(`士兵 ${alive} / ${b.maxSoldiers}`);
+    } else if (b.type === 'mage_tower') {
+      const alive = b.mages.filter(m => !m.dead).length;
+      this.statsText.setText(`法師 ${alive} / ${b.maxMages}`);
     } else {
       this.statsText.setText('');
     }
 
     const nextLv = b.level + 1;
-    const typeKeyMap = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS' };
+    const typeKeyMap = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER' };
     const cfgTypeKey = typeKeyMap[b.type] || b.type.toUpperCase();
     const upgCfg = CONFIG.BUILDINGS[cfgTypeKey]?.UPGRADE?.[nextLv];
 
@@ -132,7 +135,7 @@ export class UpgradePanel {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
     const nextLv = b.level + 1;
-    const typeKeyMap2 = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS' };
+    const typeKeyMap2 = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER' };
     const typeKey = typeKeyMap2[b.type] || b.type.toUpperCase();
     const upgCfg = CONFIG.BUILDINGS[typeKey]?.UPGRADE?.[nextLv];
     if (!upgCfg) return;

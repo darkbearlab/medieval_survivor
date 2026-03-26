@@ -45,9 +45,10 @@ export class Enemy {
     const isPlayer = target === this.scene.player;
     const isTc     = target === tc;
     const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, target.x, target.y);
-    const isSoldier = target && target.type === 'soldier';
-    // Soldiers: 40px — physics collider keeps bodies ~32px apart, so range must exceed that
-    const atkRange = isPlayer ? 28 : isTc ? CONFIG.TOWN_CENTER.RADIUS + 16 : isSoldier ? 40 : 32;
+    // Mobile allied units (soldier / allied_mage): physics collider keeps bodies ~32px apart,
+    // so attack range must exceed that separation distance.
+    const isMobileAlly = target && (target.type === 'soldier' || target.type === 'allied_mage');
+    const atkRange = isPlayer ? 28 : isTc ? CONFIG.TOWN_CENTER.RADIUS + 16 : isMobileAlly ? 40 : 32;
 
     if (dist < atkRange) {
       if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
@@ -91,8 +92,9 @@ export class Enemy {
     };
     const player = this.scene.player;
     if (player && !player.isDead) check(player);
-    if (bs.soldiers) for (const s of bs.soldiers) check(s);
-    const lists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops, bs.barracks];
+    if (bs.soldiers)    for (const s of bs.soldiers)    check(s);
+    if (bs.alliedMages) for (const m of bs.alliedMages) check(m);
+    const lists = [bs.towers, bs.smiths, bs.trainingGrounds, bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops, bs.barracks, bs.mageTowers];
     for (const list of lists) { if (list) for (const b of list) check(b); }
     return best || this.scene.townCenter;
   }

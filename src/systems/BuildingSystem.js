@@ -7,7 +7,8 @@ import { TrainingGround } from '../entities/buildings/TrainingGround.js';
 import { Cafeteria } from '../entities/buildings/Cafeteria.js';
 import { GatheringPost } from '../entities/buildings/GatheringPost.js';
 import { RepairWorkshop } from '../entities/buildings/RepairWorkshop.js';
-import { Barracks } from '../entities/buildings/Barracks.js';
+import { Barracks }   from '../entities/buildings/Barracks.js';
+import { MageTower }  from '../entities/buildings/MageTower.js';
 
 export class BuildingSystem {
   constructor(scene) {
@@ -19,8 +20,10 @@ export class BuildingSystem {
     this.cafeterias = [];
     this.gatheringPosts = [];
     this.repairWorkshops = [];
-    this.barracks = [];
-    this.soldiers = [];   // all living soldiers across all barracks
+    this.barracks    = [];
+    this.soldiers    = [];   // all living soldiers across all barracks
+    this.mageTowers  = [];
+    this.alliedMages = [];   // all living allied mages across all mage towers
     this.placingType = null;
     this.previewSprite = null;
     this._justStarted = false;  // prevent same-click placement
@@ -29,7 +32,7 @@ export class BuildingSystem {
   startPlacing(type) {
     this.cancelPlacing();
     this.placingType = type;
-    const texMap = { wall: 'building_wall', tower: 'building_tower', smith: 'building_smith', training: 'building_training', cafeteria: 'building_cafeteria', gathering: 'building_gathering', repair: 'building_repair', barracks: 'building_barracks' };
+    const texMap = { wall: 'building_wall', tower: 'building_tower', smith: 'building_smith', training: 'building_training', cafeteria: 'building_cafeteria', gathering: 'building_gathering', repair: 'building_repair', barracks: 'building_barracks', mage_tower: 'building_mage_tower' };
     const texKey = texMap[type] || 'building_wall';
     this.previewSprite = this.scene.add.sprite(0, 0, texKey)
       .setAlpha(0.55)
@@ -72,7 +75,7 @@ export class BuildingSystem {
     worldX = this._snapToGrid(worldX);
     worldY = this._snapToGrid(worldY);
 
-    const typeKeyMap = { wall: 'WALL', tower: 'TOWER', smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS' };
+    const typeKeyMap = { wall: 'WALL', tower: 'TOWER', smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER' };
     const typeKey = typeKeyMap[this.placingType] || this.placingType.toUpperCase();
     const cfg = CONFIG.BUILDINGS[typeKey];
     if (!cfg) return false;
@@ -136,6 +139,11 @@ export class BuildingSystem {
       this.barracks.push(b);
       this.scene.barracksGroup.add(b.sprite);
       b.sprite.refreshBody();
+    } else if (this.placingType === 'mage_tower') {
+      const mt = new MageTower(this.scene, worldX, worldY);
+      this.mageTowers.push(mt);
+      this.scene.mageTowerGroup.add(mt.sprite);
+      mt.sprite.refreshBody();
     }
 
     return true;
@@ -152,7 +160,11 @@ export class BuildingSystem {
     for (const b of this.barracks) {
       if (!b.dead) b.update(time);
     }
-    // Prune dead soldiers from the global list
-    this.soldiers = this.soldiers.filter(s => !s.dead);
+    for (const mt of this.mageTowers) {
+      if (!mt.dead) mt.update(time);
+    }
+    // Prune dead units from global lists
+    this.soldiers    = this.soldiers.filter(s => !s.dead);
+    this.alliedMages = this.alliedMages.filter(m => !m.dead);
   }
 }
