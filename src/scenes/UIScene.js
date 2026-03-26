@@ -13,11 +13,9 @@ export class UIScene extends Phaser.Scene {
     this.buildMenu    = new BuildMenu(this);
     this.upgradePanel = new UpgradePanel(this);
 
-    this._onToggleBuildMenu = () => this.buildMenu.toggle();
-    this._onCloseBuildMenu  = () => this.buildMenu.hide();
-
-    EventBus.on('toggle_build_menu', this._onToggleBuildMenu);
-    EventBus.on('close_build_menu',  this._onCloseBuildMenu);
+    // 'close_build_menu' (right-click while not placing) deselects the hotbar
+    this._onClose = () => EventBus.emit('build_cancelled');
+    EventBus.on('close_build_menu', this._onClose);
   }
 
   update() {
@@ -28,8 +26,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   shutdown() {
-    EventBus.off('toggle_build_menu', this._onToggleBuildMenu);
-    EventBus.off('close_build_menu',  this._onCloseBuildMenu);
+    EventBus.off('close_build_menu', this._onClose);
     if (this.hud)          this.hud.destroy();
     if (this.buildMenu)    this.buildMenu.destroy();
     if (this.upgradePanel) this.upgradePanel.destroy();

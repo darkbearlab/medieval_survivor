@@ -88,10 +88,23 @@ export class GameScene extends Phaser.Scene {
       rightArrow: Phaser.Input.Keyboard.KeyCodes.RIGHT,
     });
 
-    this.keyB   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
     this.keyESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.keyP   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
     this.keyF   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+
+    // Hotbar keys 1–9 and 0 (maps to building slots 0–9)
+    this.hotbarKeys = this.input.keyboard.addKeys({
+      k1: Phaser.Input.Keyboard.KeyCodes.ONE,
+      k2: Phaser.Input.Keyboard.KeyCodes.TWO,
+      k3: Phaser.Input.Keyboard.KeyCodes.THREE,
+      k4: Phaser.Input.Keyboard.KeyCodes.FOUR,
+      k5: Phaser.Input.Keyboard.KeyCodes.FIVE,
+      k6: Phaser.Input.Keyboard.KeyCodes.SIX,
+      k7: Phaser.Input.Keyboard.KeyCodes.SEVEN,
+      k8: Phaser.Input.Keyboard.KeyCodes.EIGHT,
+      k9: Phaser.Input.Keyboard.KeyCodes.NINE,
+      k0: Phaser.Input.Keyboard.KeyCodes.ZERO,
+    });
 
     // Disable browser right-click context menu so right-click can be used in-game
     this.input.mouse.disableContextMenu();
@@ -106,10 +119,11 @@ export class GameScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (pointer) => {
       if (this.isGameOver || this.isPaused) return;
-      // Right-click cancels placement (or closes menus)
+      // Right-click cancels placement (or deselects hotbar)
       if (pointer.rightButtonDown()) {
         if (this.buildingSystem.isPlacing()) {
           this.buildingSystem.cancelPlacing();
+          EventBus.emit('build_cancelled');
         } else {
           EventBus.emit('close_build_menu');
         }
@@ -191,10 +205,10 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.mageProjectiles, this.alliedMagesGroup, this._onMageProjHitBuilding, null, this);
 
     // --- EventBus subscriptions ---
-    this._onBuildSelect = (type) => {
-      this.buildingSystem.startPlacing(type);
-    };
-    EventBus.on('build_select', this._onBuildSelect);
+    this._onBuildSelect    = (type) => this.buildingSystem.startPlacing(type);
+    this._onBuildCancelled = ()     => this.buildingSystem.cancelPlacing();
+    EventBus.on('build_select',    this._onBuildSelect);
+    EventBus.on('build_cancelled', this._onBuildCancelled);
 
     // --- Attack timing ---
     this.nextAttackTime = 0;
@@ -734,21 +748,25 @@ export class GameScene extends Phaser.Scene {
     // F key: toggle soldier rally (follow player)
     if (Phaser.Input.Keyboard.JustDown(this.keyF)) this._toggleSoldierRally();
 
-    // B key: toggle build menu
-    if (Phaser.Input.Keyboard.JustDown(this.keyB)) {
-      if (this.buildingSystem.isPlacing()) {
-        this.buildingSystem.cancelPlacing();
-      } else {
-        EventBus.emit('toggle_build_menu');
-      }
-    }
-
-    // ESC key: cancel placement or close menus
+    // ESC key: cancel placement / deselect hotbar
     if (Phaser.Input.Keyboard.JustDown(this.keyESC)) {
       if (this.buildingSystem.isPlacing()) {
         this.buildingSystem.cancelPlacing();
+        EventBus.emit('build_cancelled');
       } else {
         EventBus.emit('close_build_menu');
+      }
+    }
+
+    // Hotbar keys 1–9 and 0
+    const _hk = this.hotbarKeys;
+    const _hkMap = [_hk.k1, _hk.k2, _hk.k3, _hk.k4, _hk.k5,
+                    _hk.k6, _hk.k7, _hk.k8, _hk.k9, _hk.k0];
+    const _uiScene = this.scene.get('UIScene');
+    for (let i = 0; i < _hkMap.length; i++) {
+      if (Phaser.Input.Keyboard.JustDown(_hkMap[i])) {
+        if (_uiScene && _uiScene.buildMenu) _uiScene.buildMenu.selectByKey(i);
+        break;
       }
     }
 
@@ -899,7 +917,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   shutdown() {
-    EventBus.off('build_select', this._onBuildSelect);
+    EventBus.off('build_select',    this._onBuildSelect);
+    EventBus.off('build_cancelled', this._onBuildCancelled);
     if (this.dayNightSystem) this.dayNightSystem.destroy();
     EventBus.removeAllListeners();
   }
