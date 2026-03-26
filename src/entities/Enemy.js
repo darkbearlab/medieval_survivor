@@ -2,6 +2,21 @@ import { CONFIG }   from '../config.js';
 import { EventBus } from '../utils/EventBus.js';
 
 /**
+ * Returns a copy of baseCfg with HP, SPEED, and DAMAGE scaled by wave number.
+ * Range, KEEP_MIN, ATTACK_RATE, EXPLOSION_RADIUS etc. are intentionally unchanged.
+ */
+export function scaleCfg(baseCfg, wave) {
+  if (!wave || wave <= 1) return baseCfg;
+  const w = wave - 1;
+  return {
+    ...baseCfg,
+    HP:     Math.round(baseCfg.HP     * (1 + w * 0.10)),
+    SPEED:  Math.round(baseCfg.SPEED  * (1 + w * 0.03)),
+    DAMAGE: Math.round(baseCfg.DAMAGE * (1 + w * 0.08)),
+  };
+}
+
+/**
  * Enemy — Bandit (default) and base class for Archer / Heavy.
  * Subclasses override update() and optionally _die() for different gold rewards.
  */

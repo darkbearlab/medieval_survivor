@@ -1,6 +1,6 @@
 import { CONFIG } from '../../config.js';
 import { EventBus } from '../../utils/EventBus.js';
-import { Enemy }  from '../Enemy.js';
+import { Enemy, scaleCfg }  from '../Enemy.js';
 
 /**
  * Mage — ranged, fires slow explosion projectiles. Targets the nearest entity
@@ -8,8 +8,8 @@ import { Enemy }  from '../Enemy.js';
  * Falls back to melee on town center when no other target is available.
  */
 export class Mage extends Enemy {
-  constructor(scene, x, y) {
-    super(scene, x, y, CONFIG.ENEMIES.MAGE);
+  constructor(scene, x, y, wave = 1) {
+    super(scene, x, y, scaleCfg(CONFIG.ENEMIES.MAGE, wave));
   }
 
   update(time) {

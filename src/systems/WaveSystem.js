@@ -1,6 +1,6 @@
 import { CONFIG }   from '../config.js';
 import { EventBus } from '../utils/EventBus.js';
-import { Enemy }    from '../entities/Enemy.js';
+import { Enemy, scaleCfg } from '../entities/Enemy.js';
 import { Archer }   from '../entities/enemies/Archer.js';
 import { Heavy }    from '../entities/enemies/Heavy.js';
 import { Mage }     from '../entities/enemies/Mage.js';
@@ -79,17 +79,17 @@ export class WaveSystem {
         const r = Math.random();
         const wave = this.currentWave;
         if (cyclePos === 1) {
-          enemy = new Enemy(scene, x, y);
+          enemy = new Enemy(scene, x, y, scaleCfg(CONFIG.ENEMIES.BANDIT, wave));
         } else if (cyclePos === 2) {
-          if (wave >= 9 && r < 0.12)      enemy = new Mage(scene, x, y);
-          else if (r < 0.40)              enemy = new Archer(scene, x, y);
-          else                            enemy = new Enemy(scene, x, y);
+          if (wave >= 9 && r < 0.12)      enemy = new Mage(scene, x, y, wave);
+          else if (r < 0.40)              enemy = new Archer(scene, x, y, wave);
+          else                            enemy = new Enemy(scene, x, y, scaleCfg(CONFIG.ENEMIES.BANDIT, wave));
         } else {
           // Night wave — Mages appear from wave 9 (third night)
-          if (wave >= 9 && r < 0.20)     enemy = new Mage(scene, x, y);
-          else if (r < 0.30)             enemy = new Archer(scene, x, y);
-          else if (r < 0.55)             enemy = new Heavy(scene, x, y);
-          else                           enemy = new Enemy(scene, x, y);
+          if (wave >= 9 && r < 0.20)     enemy = new Mage(scene, x, y, wave);
+          else if (r < 0.30)             enemy = new Archer(scene, x, y, wave);
+          else if (r < 0.55)             enemy = new Heavy(scene, x, y, wave);
+          else                           enemy = new Enemy(scene, x, y, scaleCfg(CONFIG.ENEMIES.BANDIT, wave));
         }
 
         scene.enemies.add(enemy.sprite);

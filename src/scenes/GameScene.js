@@ -874,7 +874,8 @@ export class GameScene extends Phaser.Scene {
 
     const types    = ['bandit', 'archer', 'heavy', 'mage'];
     const bossType = types[Phaser.Math.Between(0, types.length - 1)];
-    const boss     = new Boss(this, x, y, bossType);
+    const wave     = this.waveSystem.currentWave;
+    const boss     = new Boss(this, x, y, bossType, wave);
     this.enemies.add(boss.sprite);
     this._showBossAlert(boss._nameTag ? boss._nameTag.text : '☠ Boss');
   }

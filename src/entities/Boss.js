@@ -1,6 +1,6 @@
 import { CONFIG }   from '../config.js';
 import { EventBus } from '../utils/EventBus.js';
-import { Enemy }    from './Enemy.js';
+import { Enemy, scaleCfg } from './Enemy.js';
 
 const BOSS_NAMES = {
   bandit: '☠ 強盜首領',
@@ -17,16 +17,16 @@ const BOSS_NAMES = {
  * Drops resources on death instead of gold.
  */
 export class Boss extends Enemy {
-  constructor(scene, x, y, bossType) {
+  constructor(scene, x, y, bossType, wave = 1) {
     const bc      = CONFIG.BOSS;
-    const baseCfg = CONFIG.ENEMIES[bossType.toUpperCase()];
+    const baseCfg = scaleCfg(CONFIG.ENEMIES[bossType.toUpperCase()], wave);
     const bossCfg = {
       HP:          Math.round(baseCfg.HP    * bc.HP_MULT),
       SPEED:       Math.round(baseCfg.SPEED * bc.SPEED_MULT),
       DAMAGE:      Math.round(baseCfg.DAMAGE * bc.DAMAGE_MULT),
       ATTACK_RATE: baseCfg.ATTACK_RATE,
       GOLD_REWARD: 0,   // loot handled in _die()
-      TEXTURE:     baseCfg.TEXTURE,
+      TEXTURE:     CONFIG.ENEMIES[bossType.toUpperCase()].TEXTURE,
     };
 
     super(scene, x, y, bossCfg);

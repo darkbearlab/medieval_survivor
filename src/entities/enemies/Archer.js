@@ -1,6 +1,6 @@
 import { CONFIG }   from '../../config.js';
 import { EventBus } from '../../utils/EventBus.js';
-import { Enemy }    from '../Enemy.js';
+import { Enemy, scaleCfg } from '../Enemy.js';
 
 /**
  * Archer — low HP, ranged.
@@ -8,8 +8,8 @@ import { Enemy }    from '../Enemy.js';
  * Backs away if target is within KEEP_MIN.
  */
 export class Archer extends Enemy {
-  constructor(scene, x, y) {
-    super(scene, x, y, CONFIG.ENEMIES.ARCHER);
+  constructor(scene, x, y, wave = 1) {
+    super(scene, x, y, scaleCfg(CONFIG.ENEMIES.ARCHER, wave));
   }
 
   update(time) {

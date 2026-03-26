@@ -1,14 +1,14 @@
 import { CONFIG }   from '../../config.js';
 import { EventBus } from '../../utils/EventBus.js';
-import { Enemy }    from '../Enemy.js';
+import { Enemy, scaleCfg } from '../Enemy.js';
 
 /**
  * Heavy — high HP, slow, targets buildings first (walls > towers > town center).
  * Deals extra BUILDING_DAMAGE to structures; ignores player unless no building available.
  */
 export class Heavy extends Enemy {
-  constructor(scene, x, y) {
-    super(scene, x, y, CONFIG.ENEMIES.HEAVY);
+  constructor(scene, x, y, wave = 1) {
+    super(scene, x, y, scaleCfg(CONFIG.ENEMIES.HEAVY, wave));
   }
 
   update(time) {

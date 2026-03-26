@@ -80,8 +80,11 @@ export class UpgradePanel {
   showFor(building) {
     this.currentBuilding = building;
     this.visible = true;
-    this._refresh();
     this._allEls.forEach(e => e.setVisible(true));
+    // Always pre-hide conditional buttons; _refresh() re-shows them only when appropriate
+    this.deployBtn.setVisible(false);
+    this.deployBtnText.setVisible(false);
+    this._refresh();
   }
 
   hide() {
@@ -104,6 +107,8 @@ export class UpgradePanel {
       this.hpText.setColor(b.depleted ? '#FF8844' : '#44FF88');
       this.statsText.setText(`產糧 ${CONFIG.BUILDINGS.FARM.FOOD_YIELD} 糧食/次\n恢復 ${CONFIG.BUILDINGS.FARM.REGEN_TIME / 1000}s`);
       this.costText.setText('');
+      this.deployBtn.setVisible(false);
+      this.deployBtnText.setVisible(false);
       this.upgradeBtn.setVisible(false);
       this.upgradeBtnText.setVisible(false);
       return;
