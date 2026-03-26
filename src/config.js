@@ -173,6 +173,15 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     },
   },
 
+  WEAPON_UPGRADES: {
+    dual_shot:  { name: '雙重射擊', desc: '每次攻擊額外射出一顆偏角子彈', icon: '◈' },
+    rapid_fire: { name: '速射砲台', desc: '附加一座快速連射砲台', icon: '⚡', DAMAGE: 8,  RANGE: 220, RATE: 400,  TINT: 0xFFCC00 },
+    explosive:  { name: '爆破彈頭', desc: '命中時觸發小範圍爆炸', icon: '💥', AOE_RADIUS: 50 },
+    chain_bolt: { name: '連鎖閃電', desc: '命中後彈射到最近的另一個敵人', icon: '🔗' },
+    frost_bolt: { name: '冰霜箭',   desc: '命中使敵人減速 30%  持續 2 秒', icon: '❄' },
+    guardian:   { name: '守護砲台', desc: '繞玩家旋轉的護衛砲台', icon: '🛡', DAMAGE: 12, RANGE: 180, RATE: 1400, TINT: 0x4488FF, ORBIT_RADIUS: 48, ORBIT_SPEED: 0.0025 },
+  },
+
   SOLDIERS: {
     LEASH_RANGE: 200,   // max distance from barracks before retreating
     SPAWN_RATE: 8000,   // ms between soldier spawns

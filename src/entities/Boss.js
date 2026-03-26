@@ -195,6 +195,9 @@ export class Boss extends Enemy {
     if (this.dead) return;
     this.dead = true;
 
+    // Notify GameScene to show upgrade choice
+    EventBus.emit('boss_killed');
+
     // Drop resources
     const loot = CONFIG.BOSS.LOOT;
     for (const [res, amount] of Object.entries(loot)) {

@@ -9,6 +9,7 @@ import { BuildingSystem }    from '../systems/BuildingSystem.js';
 import { DayNightSystem }    from '../systems/DayNightSystem.js';
 import { PathFinder }        from '../utils/PathFinder.js';
 import { Boss }              from '../entities/Boss.js';
+import { WeaponMount }      from '../entities/WeaponMount.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -249,6 +250,13 @@ export class GameScene extends Phaser.Scene {
     // --- Game mode timer ---
     this.gameTimer = this.gameMode === 'timed' ? this.timeLimit * 1000 : null;
 
+    // --- Weapon mounts (boss kill upgrades) ---
+    this._weaponMounts = [];
+    this._onBossKilled = () => this._showUpgradeChoice();
+    this._onUpgradeChosen = (key) => this._applyUpgrade(key);
+    EventBus.on('boss_killed',     this._onBossKilled);
+    EventBus.on('upgrade_chosen',  this._onUpgradeChosen);
+
     // --- Pause state ---
     this.isPaused = false;
     this._pauseOverlay = this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x000000, 0.65)
@@ -397,14 +405,18 @@ export class GameScene extends Phaser.Scene {
 
   _onProjectileHitEnemy(projectile, enemySprite) {
     if (!projectile.active || !enemySprite.active) return;
-    const entity = enemySprite.getData('entity');
-    const dmg    = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
+    const entity    = enemySprite.getData('entity');
+    const dmg       = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
+    const fp        = projectile.getData('fromPlayer');
     if (entity) entity.takeDamage(dmg);
     const px = projectile.x, py = projectile.y;
     projectile.destroy();
-    // Mage character: every hit triggers AoE explosion
-    if (this.player && this.player.aoeOnHit) {
-      this._triggerPlayerAoE(px, py, Math.round(dmg * 0.65));
+
+    if (fp && this.player) {
+      if (this.player.aoeOnHit)      this._triggerPlayerAoE(px, py, Math.round(dmg * 0.65));
+      if (this.player._explosiveShots) this._triggerMountExplosion(px, py, Math.round(dmg * 0.5));
+      if (this.player._chainBolt && entity && !entity.dead) this._chainBoltHit(entity, dmg);
+      if (this.player._frostBolt && entity && !entity.dead) this._applyFrost(entity);
     }
   }
 
@@ -582,14 +594,20 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN, () => { if (proj.active) proj.destroy(); });
   }
 
-  _fireProjectile(x, y, targetSprite, damage = CONFIG.PROJECTILE.DAMAGE) {
+  _fireProjectile(x, y, targetSprite, damage = CONFIG.PROJECTILE.DAMAGE, fromPlayer = false, tint = null) {
     const proj = this.projectiles.create(x, y, 'projectile');
     if (!proj || !proj.body) return;
     proj.setDepth(12);
-    // Tint projectile to match character type
-    if (this.player && this.player.aoeOnHit)     proj.setTint(0xCC44FF);   // mage — purple
-    else if (this.player && this.player.defensePct > 0) proj.setTint(0xFF6633); // warrior — red
+    // Tint: explicit tint (WeaponMount) takes priority; otherwise use character type
+    if (tint !== null) {
+      proj.setTint(tint);
+    } else if (fromPlayer && this.player && this.player.aoeOnHit) {
+      proj.setTint(0xCC44FF);   // mage — purple
+    } else if (fromPlayer && this.player && this.player.defensePct > 0) {
+      proj.setTint(0xFF6633);   // warrior — red
+    }
     proj.setData('isProjectile', true);
+    proj.setData('fromPlayer', fromPlayer);
     proj.setData('damage', damage);
     const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
     proj.body.setVelocity(
@@ -840,7 +858,18 @@ export class GameScene extends Phaser.Scene {
       );
       if (target) {
         const dmg = Math.round((CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus) * this.player.damageMult);
-        this._fireProjectile(this.player.x, this.player.y, target, dmg);
+        this._fireProjectile(this.player.x, this.player.y, target, dmg, true);
+        // dual_shot: fire extra projectiles at small angle offsets
+        const extras = this.player._extraShots || 0;
+        for (let s = 0; s < extras; s++) {
+          const offsetAngle = ((s % 2 === 0 ? 1 : -1) * (Math.ceil((s + 1) / 2) * 18)) * (Math.PI / 180);
+          const baseAngle   = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+          const fakeTarget  = {
+            x: this.player.x + Math.cos(baseAngle + offsetAngle) * 400,
+            y: this.player.y + Math.sin(baseAngle + offsetAngle) * 400,
+          };
+          this._fireProjectile(this.player.x, this.player.y, fakeTarget, Math.round(dmg * 0.8), true);
+        }
         this.nextAttackTime = time + this.player.attackRate;
       }
     }
@@ -939,6 +968,9 @@ export class GameScene extends Phaser.Scene {
       this._spawnBoss();
     }
 
+    // Weapon mounts
+    for (const wm of this._weaponMounts) wm.update(time, delta);
+
     // Wave system
     this.waveSystem.update(delta);
   }
@@ -982,6 +1014,120 @@ export class GameScene extends Phaser.Scene {
       yoyo: true,
       hold: 1200,
       onComplete: () => alert.destroy(),
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  //  Weapon upgrade system
+  // ─────────────────────────────────────────────
+
+  _showUpgradeChoice() {
+    // Pause the wave countdown while choosing
+    this.isPaused = true;
+    // Pick 3 random upgrades from the pool (allow duplicates)
+    const pool   = Object.keys(CONFIG.WEAPON_UPGRADES);
+    const picks  = [];
+    while (picks.length < 3) {
+      picks.push(pool[Phaser.Math.Between(0, pool.length - 1)]);
+    }
+    this.scene.launch('UpgradeChoiceScene', { upgrades: picks });
+  }
+
+  _applyUpgrade(key) {
+    this.isPaused = false;
+    this.scene.stop('UpgradeChoiceScene');
+
+    const wu = CONFIG.WEAPON_UPGRADES[key];
+    if (!wu) return;
+
+    switch (key) {
+      case 'dual_shot':
+        this.player._extraShots = (this.player._extraShots || 0) + 1;
+        break;
+      case 'rapid_fire':
+        this._weaponMounts.push(new WeaponMount(this, this.player, wu));
+        break;
+      case 'explosive':
+        this.player._explosiveShots = true;
+        break;
+      case 'chain_bolt':
+        this.player._chainBolt = true;
+        break;
+      case 'frost_bolt':
+        this.player._frostBolt = true;
+        break;
+      case 'guardian': {
+        // Two guardian mounts, offset by π
+        const g1 = new WeaponMount(this, this.player, { ...wu, initialAngle: 0 });
+        const g2 = new WeaponMount(this, this.player, { ...wu, initialAngle: Math.PI });
+        this._weaponMounts.push(g1, g2);
+        break;
+      }
+    }
+
+    // Brief on-screen confirmation
+    const { WIDTH, HEIGHT } = CONFIG;
+    const label = this.add.text(WIDTH / 2, HEIGHT / 2 - 40, `✦ ${wu.name} ✦`, {
+      fontSize: '28px', fontFamily: 'Georgia, serif',
+      color: '#FFD700', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
+    this.tweens.add({
+      targets: label, alpha: 1, y: HEIGHT / 2 - 60, duration: 350,
+      yoyo: true, hold: 800,
+      onComplete: () => label.destroy(),
+    });
+  }
+
+  _triggerMountExplosion(x, y, damage) {
+    const r = CONFIG.WEAPON_UPGRADES.explosive.AOE_RADIUS;
+    const outer = this.add.circle(x, y, r,        0xFF6600, 0.50).setDepth(20);
+    const inner = this.add.circle(x, y, r * 0.4,  0xFFCC00, 0.80).setDepth(21);
+    this.tweens.add({
+      targets: [outer, inner], alpha: 0, scaleX: 1.4, scaleY: 1.4, duration: 320,
+      onComplete: () => { outer.destroy(); inner.destroy(); },
+    });
+    this.enemies.getChildren().forEach(sprite => {
+      if (!sprite.active) return;
+      const entity = sprite.getData('entity');
+      if (!entity || entity.dead) return;
+      if (Phaser.Math.Distance.Between(x, y, sprite.x, sprite.y) < r) entity.takeDamage(damage);
+    });
+  }
+
+  _chainBoltHit(hitEntity, dmg) {
+    // Find nearest enemy that isn't the one we just hit
+    let nearest = null, nearestDist = 300;
+    this.enemies.getChildren().forEach(sprite => {
+      if (!sprite.active) return;
+      const e = sprite.getData('entity');
+      if (!e || e.dead || e === hitEntity) return;
+      const d = Phaser.Math.Distance.Between(hitEntity.sprite.x, hitEntity.sprite.y, sprite.x, sprite.y);
+      if (d < nearestDist) { nearestDist = d; nearest = sprite; }
+    });
+    if (!nearest) return;
+    // Draw a brief lightning line
+    const g = this.add.graphics().setDepth(25);
+    g.lineStyle(2, 0xAADDFF, 0.9);
+    g.lineBetween(hitEntity.sprite.x, hitEntity.sprite.y, nearest.x, nearest.y);
+    this.tweens.add({ targets: g, alpha: 0, duration: 250, onComplete: () => g.destroy() });
+    // Damage the chained target
+    const chainEntity = nearest.getData('entity');
+    if (chainEntity) chainEntity.takeDamage(Math.round(dmg * 0.6));
+  }
+
+  _applyFrost(entity) {
+    if (!entity._origSpeed) entity._origSpeed = entity.speed;
+    entity.speed = Math.round(entity._origSpeed * 0.70);
+    if (entity.sprite && entity.sprite.active) entity.sprite.setTint(0x88AAFF);
+    // Clear any previous timer
+    if (entity._frostTimer) entity._frostTimer.remove();
+    entity._frostTimer = this.time.delayedCall(2000, () => {
+      if (!entity.dead) {
+        entity.speed = entity._origSpeed;
+        if (entity.sprite && entity.sprite.active) entity.sprite.clearTint();
+      }
+      entity._origSpeed  = null;
+      entity._frostTimer = null;
     });
   }
 

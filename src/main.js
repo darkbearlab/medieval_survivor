@@ -5,6 +5,7 @@ import { GameScene }            from './scenes/GameScene.js';
 import { UIScene }              from './scenes/UIScene.js';
 import { GameOverScene }        from './scenes/GameOverScene.js';
 import { VictoryScene }         from './scenes/VictoryScene.js';
+import { UpgradeChoiceScene }  from './scenes/UpgradeChoiceScene.js';
 import { CONFIG }               from './config.js';
 
 const gameConfig = {
@@ -19,7 +20,7 @@ const gameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, CharacterSelectScene, GameScene, UIScene, GameOverScene, VictoryScene],
+  scene: [BootScene, MenuScene, CharacterSelectScene, GameScene, UIScene, GameOverScene, VictoryScene, UpgradeChoiceScene],
 };
 
 new Phaser.Game(gameConfig);

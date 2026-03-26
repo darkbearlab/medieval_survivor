@@ -10,8 +10,8 @@ export class CharacterSelectScene extends Phaser.Scene {
   create() {
     const { WIDTH: W, HEIGHT: H } = CONFIG;
     this._selected = 'ranger';
-    this._gameMode = 'timed';   // default: timed mode
-    this._cardEls  = {};   // key → { bg, border }
+    this._gameMode = 'timed';
+    this._cardEls  = {};   // key → { bg, border, details[] }
 
     // Background
     this.add.rectangle(W / 2, H / 2, W, H, 0x0d1b2a);
@@ -22,18 +22,18 @@ export class CharacterSelectScene extends Phaser.Scene {
       color: '#FFD700', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5);
 
-    this.add.text(W / 2, 92, '每種角色有獨特能力，選擇適合你的玩法', {
-      fontSize: '14px', color: '#888888',
+    this.add.text(W / 2, 92, '將滑鼠移到角色上查看詳情，點擊選擇', {
+      fontSize: '14px', color: '#555555',
     }).setOrigin(0.5);
 
     // Character cards
     const cardCentersX = [W / 2 - 290, W / 2, W / 2 + 290];
     CHAR_KEYS.forEach((key, i) => {
-      this._buildCard(cardCentersX[i], 360, key);
+      this._buildCard(cardCentersX[i], 330, key);
     });
 
     // ── Mode selection ──────────────────────────────────────────────────────
-    const modeY   = 545;
+    const modeY    = 530;
     const timedDur = CONFIG.GAME_MODES.TIMED.DURATION;
     const timedMin = Math.floor(timedDur / 60);
     const modeLabels = {
@@ -55,12 +55,12 @@ export class CharacterSelectScene extends Phaser.Scene {
       timed:   _makeModeBtn(W / 2 - 110, 'timed'),
       endless: _makeModeBtn(W / 2 + 110, 'endless'),
     };
-    this._selectMode('timed');   // highlight default
+    this._selectMode('timed');
 
     // Start button
-    const startBg = this.add.rectangle(W / 2, 608, 240, 50, 0x8B0000)
+    const startBg = this.add.rectangle(W / 2, 594, 240, 50, 0x8B0000)
       .setInteractive({ useHandCursor: true });
-    const startTxt = this.add.text(W / 2, 608, '開始冒險', {
+    this.add.text(W / 2, 594, '開始冒險', {
       fontSize: '26px', color: '#FFD700',
     }).setOrigin(0.5);
     startBg.on('pointerover', () => startBg.setFillStyle(0xAA1111));
@@ -75,43 +75,45 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.tweens.add({ targets: startBg, scaleX: 1.02, scaleY: 1.02, yoyo: true, repeat: -1, duration: 900 });
 
     // Back button
-    const backTxt = this.add.text(W / 2, 656, '← 返回主選單', {
+    const backTxt = this.add.text(W / 2, 645, '← 返回主選單', {
       fontSize: '14px', color: '#555555',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     backTxt.on('pointerover', () => backTxt.setColor('#888888'));
     backTxt.on('pointerout',  () => backTxt.setColor('#555555'));
     backTxt.on('pointerdown', () => this.scene.start('MenuScene'));
 
-    // Select ranger by default
+    // Select ranger by default (show its details immediately)
     this._selectCard('ranger');
   }
 
   _buildCard(cx, cy, key) {
-    const cfg  = CONFIG.CHARACTERS[key];
-    const cardW = 240, cardH = 350;
+    const cfg   = CONFIG.CHARACTERS[key];
+    const cardW = 240, cardH = 390;
+    const accentHex = '#' + cfg.ACCENT.toString(16).padStart(6, '0');
 
-    // Card background
+    // ── Permanent elements ──────────────────────────────────────────────────
     const bg = this.add.rectangle(cx, cy, cardW, cardH, 0x111822)
       .setInteractive({ useHandCursor: true });
 
-    // Coloured border (replaced on selection)
     const border = this.add.rectangle(cx, cy, cardW, cardH, 0x000000, 0)
       .setStrokeStyle(2, 0x333344);
 
-    // Character sprite (scaled up)
-    const sprite = this.add.image(cx, cy - 95, cfg.TEXTURE).setScale(3);
+    // Sprite sits at the vertical center of the compact view
+    const sprite = this.add.image(cx, cy - 60, cfg.TEXTURE).setScale(3);
 
-    // Name
-    this.add.text(cx, cy - 38, cfg.name, {
+    // Name always visible
+    const nameText = this.add.text(cx, cy + 50, cfg.name, {
       fontSize: '22px', fontFamily: 'Georgia, serif',
-      color: '#' + cfg.ACCENT.toString(16).padStart(6, '0'),
-      stroke: '#000000', strokeThickness: 2,
+      color: accentHex, stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Tagline
-    this.add.text(cx, cy - 10, cfg.tagline, {
-      fontSize: '12px', color: '#AAAAAA',
-    }).setOrigin(0.5);
+    // ── Detail elements (hidden by default) ────────────────────────────────
+    const details = [];
+
+    const tagline = this.add.text(cx, cy + 78, cfg.tagline, {
+      fontSize: '12px', color: '#888888',
+    }).setOrigin(0.5).setVisible(false);
+    details.push(tagline);
 
     // Stat bars
     const stats = [
@@ -123,62 +125,73 @@ export class CharacterSelectScene extends Phaser.Scene {
         special: cfg.DEFENSE_PCT > 0 ? `${Math.round(cfg.DEFENSE_PCT * 100)}%` : cfg.AOE ? '✓' : '─' },
     ];
 
-    const barW = 130, barH = 8;
-    const barStartY = cy + 28;
+    const barW = 120, barH = 8;
+    const barStartY = cy + 112;
     stats.forEach((st, i) => {
-      const ry = barStartY + i * 28;
-      // Label
-      this.add.text(cx - barW / 2 - 4, ry, st.label, {
-        fontSize: '12px', color: '#777777',
-      }).setOrigin(1, 0.5);
-      // Bar background
-      this.add.rectangle(cx + 10, ry, barW, barH, 0x222222).setOrigin(0, 0.5);
-      // Bar fill
+      const ry = barStartY + i * 26;
+
+      const lbl = this.add.text(cx - barW / 2 - 4, ry, st.label, {
+        fontSize: '11px', color: '#666666',
+      }).setOrigin(1, 0.5).setVisible(false);
+
+      const barBg = this.add.rectangle(cx + 8, ry, barW, barH, 0x222222)
+        .setOrigin(0, 0.5).setVisible(false);
+
       const fillColor = Phaser.Display.Color.Interpolate.ColorWithColor(
         Phaser.Display.Color.ValueToColor(0x224422),
         Phaser.Display.Color.ValueToColor(cfg.ACCENT),
-        100, Math.round(st.pct * 100)
+        100, Math.round(Math.min(1, st.pct) * 100)
       );
       const fillHex = Phaser.Display.Color.GetColor(fillColor.r, fillColor.g, fillColor.b);
-      this.add.rectangle(cx + 10, ry, barW * Math.min(1, st.pct), barH, fillHex).setOrigin(0, 0.5);
-      // Special text (for last stat)
+      const barFill = this.add.rectangle(cx + 8, ry, barW * Math.min(1, st.pct), barH, fillHex)
+        .setOrigin(0, 0.5).setVisible(false);
+
+      details.push(lbl, barBg, barFill);
+
       if (st.special) {
-        this.add.text(cx + 10 + barW + 6, ry, st.special, {
-          fontSize: '11px', color: '#CCCCCC',
-        }).setOrigin(0, 0.5);
+        const spTxt = this.add.text(cx + 8 + barW + 5, ry, st.special, {
+          fontSize: '11px', color: '#BBBBBB',
+        }).setOrigin(0, 0.5).setVisible(false);
+        details.push(spTxt);
       }
     });
 
-    // Lore text
-    this.add.text(cx, cy + 148, cfg.lore, {
-      fontSize: '11px', color: '#555555',
-    }).setOrigin(0.5);
+    const lore = this.add.text(cx, cy + 224, cfg.lore, {
+      fontSize: '11px', color: '#444444',
+    }).setOrigin(0.5).setVisible(false);
+    details.push(lore);
 
-    // Click handler
+    // ── Interaction ─────────────────────────────────────────────────────────
     bg.on('pointerover', () => {
-      if (this._selected !== key) bg.setFillStyle(0x192233);
+      if (this._selected !== key) bg.setFillStyle(0x161f2e);
+      details.forEach(e => e.setVisible(true));
     });
     bg.on('pointerout', () => {
-      if (this._selected !== key) bg.setFillStyle(0x111822);
+      if (this._selected !== key) {
+        bg.setFillStyle(0x111822);
+        details.forEach(e => e.setVisible(false));
+      }
     });
     bg.on('pointerdown', () => this._selectCard(key));
 
-    this._cardEls[key] = { bg, border };
+    this._cardEls[key] = { bg, border, details };
   }
 
   _selectCard(key) {
-    // Deselect previous
-    if (this._selected && this._cardEls[this._selected]) {
+    // Hide details on previously selected card (unless mouse is still over it)
+    if (this._selected && this._cardEls[this._selected] && this._selected !== key) {
       const prev = this._cardEls[this._selected];
       prev.bg.setFillStyle(0x111822);
       prev.border.setStrokeStyle(2, 0x333344);
+      prev.details.forEach(e => e.setVisible(false));
     }
-    // Select new
+    // Highlight new selection and show its details
     this._selected = key;
     const cfg = CONFIG.CHARACTERS[key];
     const cur = this._cardEls[key];
     cur.bg.setFillStyle(0x1a2a3a);
     cur.border.setStrokeStyle(3, cfg.ACCENT);
+    cur.details.forEach(e => e.setVisible(true));
   }
 
   _selectMode(modeKey) {
