@@ -28,6 +28,8 @@ export class BootScene extends Phaser.Scene {
     this._genSoldierRanged();
     this._genAlliedMage();
     this._genFarm();
+    this._genPlayerWarrior();
+    this._genPlayerMage();
     this.scene.start('MenuScene');
   }
 
@@ -619,6 +621,76 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0x7B4A1A, 1);
     g.strokeRect(1, 1, 38, 38);
     g.generateTexture('building_farm', 40, 40);
+    g.destroy();
+  }
+
+  _genPlayerWarrior() {
+    const g = this.make.graphics({ add: false });
+    // Body — dark red armor
+    g.fillStyle(0x8B2200);
+    g.fillRect(7, 10, 18, 16);
+    // Chest highlight
+    g.fillStyle(0xCC4422);
+    g.fillRect(10, 12, 8, 8);
+    // Head — skin
+    g.fillStyle(0xFFCC80);
+    g.fillRect(10, 3, 12, 9);
+    // Helmet — silver
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(8, 1, 16, 7);
+    // Helmet plume — red
+    g.fillStyle(0xFF2200);
+    g.fillRect(13, 0, 4, 3);
+    // Shield — left side
+    g.fillStyle(0x8B2200);
+    g.fillRect(2, 11, 6, 12);
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(3, 14, 4, 6);
+    // Sword — right
+    g.fillStyle(0xCCCCCC);
+    g.fillRect(25, 8, 3, 14);
+    g.fillStyle(0xAA8800);
+    g.fillRect(23, 12, 7, 3);
+    // Legs
+    g.fillStyle(0x5A1500);
+    g.fillRect(7, 26, 7, 6);
+    g.fillRect(18, 26, 7, 6);
+    g.generateTexture('player_warrior', 32, 32);
+    g.destroy();
+  }
+
+  _genPlayerMage() {
+    const g = this.make.graphics({ add: false });
+    // Robes — purple
+    g.fillStyle(0x5511AA);
+    g.fillRect(7, 12, 18, 16);
+    // Robe highlight
+    g.fillStyle(0x7733CC);
+    g.fillRect(12, 14, 6, 10);
+    // Head — skin
+    g.fillStyle(0xFFCC80);
+    g.fillRect(10, 5, 12, 9);
+    // Pointed hat — dark purple
+    g.fillStyle(0x220055);
+    g.fillRect(8, 0, 16, 7);
+    g.fillStyle(0x330077);
+    g.fillRect(11, 0, 10, 5);
+    // Hat tip
+    g.fillStyle(0x220055);
+    g.fillRect(13, 0, 6, 3);
+    // Staff — brown
+    g.fillStyle(0x7A4A1E);
+    g.fillRect(25, 6, 3, 22);
+    // Orb on staff — glowing purple
+    g.fillStyle(0xCC44FF);
+    g.fillRect(23, 4, 7, 7);
+    g.fillStyle(0xFF88FF);
+    g.fillRect(25, 5, 3, 3);
+    // Legs
+    g.fillStyle(0x330088);
+    g.fillRect(8, 28, 6, 4);
+    g.fillRect(18, 28, 6, 4);
+    g.generateTexture('player_mage', 32, 32);
     g.destroy();
   }
 

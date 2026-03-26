@@ -7,7 +7,10 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.waveReached = data.wave || 0;
+    this.waveReached  = data.wave         || 0;
+    this.characterKey = data.characterKey || 'ranger';
+    this.gameMode     = data.gameMode     || 'endless';
+    this.timeLimit    = data.timeLimit    || CONFIG.GAME_MODES.TIMED.DURATION;
 
     const SAVE_KEY = 'medieval_survivor_save';
     let save = {};
@@ -115,7 +118,11 @@ export class GameOverScene extends Phaser.Scene {
     retryBtn.on('pointerout',  () => retryBtn.setFillStyle(0x8B0000));
     retryBtn.on('pointerdown', () => {
       this.scene.stop('GameOverScene');
-      this.scene.start('GameScene');
+      this.scene.start('GameScene', {
+        characterKey: this.characterKey,
+        gameMode:     this.gameMode,
+        timeLimit:    this.timeLimit,
+      });
     });
 
     const menuBtn = this.add.rectangle(WIDTH / 2 + 140, 606, 220, 50, 0x1a2a3a)

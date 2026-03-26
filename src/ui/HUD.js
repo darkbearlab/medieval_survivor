@@ -56,7 +56,7 @@ export class HUD {
     this._drawPlayerBar(CONFIG.PLAYER.HP, CONFIG.PLAYER.HP);
 
     // ── Wave info — top-right ─────────────────────────────────────────────────
-    s.add.rectangle(W - 115, 62, 220, 95, 0x000000, 0.55)
+    s.add.rectangle(W - 115, 68, 220, 120, 0x000000, 0.55)
       .setDepth(90).setScrollFactor(0);
 
     this.waveText = s.add.text(W - 18, 18, 'Wave -', {
@@ -79,6 +79,12 @@ export class HUD {
       fontSize: '15px', color: '#FFD700',
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(1, 0).setDepth(91).setScrollFactor(0);
+
+    // ── Game timer (timed mode only) ──────────────────────────────────────────
+    this.gameTimerText = s.add.text(W - 18, 142, '', {
+      fontSize: '16px', color: '#44FF88',
+      stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(1, 0).setDepth(91).setScrollFactor(0).setVisible(false);
 
     // ── Build-failed flash message ─────────────────────────────────────────────
     this.buildFailText = s.add.text(W / 2, H - 110, '', {
@@ -143,9 +149,9 @@ export class HUD {
     if (this._playerHpText) this._playerHpText.setText(`${Math.ceil(hp)} / ${maxHp}`);
   }
 
-  // ── Wave countdown (called every frame from UIScene) ──────────────────────
+  // ── Wave countdown + game timer (called every frame from UIScene) ────────
 
-  update(waveSystem) {
+  update(waveSystem, gameMode, gameTimerMs) {
     if (!waveSystem) return;
     const wave      = waveSystem.currentWave;
     const phase     = waveSystem.phase;
@@ -162,6 +168,21 @@ export class HUD {
     } else {
       this.phaseText.setText('下一波倒計時');
       this.countdownText.setText(`${countdown}s`).setColor('#44CC88');
+    }
+
+    // Game timer (timed mode)
+    if (gameMode === 'timed' && gameTimerMs !== null && gameTimerMs !== undefined) {
+      const remaining = Math.max(0, gameTimerMs);
+      const totalSec  = Math.ceil(remaining / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      const color = remaining > 240000 ? '#44FF88' : remaining > 120000 ? '#FFAA00' : '#FF4444';
+      this.gameTimerText
+        .setText(`⏱ ${m}:${String(s).padStart(2, '0')}`)
+        .setColor(color)
+        .setVisible(true);
+    } else {
+      this.gameTimerText.setVisible(false);
     }
   }
 

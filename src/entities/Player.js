@@ -2,81 +2,81 @@ import { CONFIG } from '../config.js';
 import { EventBus } from '../utils/EventBus.js';
 
 export class Player {
-  constructor(scene, x, y) {
-    this.scene = scene;
+  constructor(scene, x, y, characterKey = 'ranger') {
+    this.scene        = scene;
+    this.characterKey = characterKey;
 
-    this.sprite = scene.physics.add.sprite(x, y, 'player');
+    const charCfg = CONFIG.CHARACTERS[characterKey] || CONFIG.CHARACTERS.ranger;
+
+    this.sprite = scene.physics.add.sprite(x, y, charCfg.TEXTURE || 'player');
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(10);
     this.sprite.setData('entity', this);
 
-    this.hp    = CONFIG.PLAYER.HP;
-    this.maxHp = CONFIG.PLAYER.HP;
-    this.isDead = false;
-    this.defense = 0;
-    this.attackBonus = 0;
+    this.hp          = charCfg.HP;
+    this.maxHp       = charCfg.HP;
+    this.isDead      = false;
+
+    // Flat bonuses (added by buildings at runtime)
+    this.defense     = 0;        // flat damage subtraction (blacksmith)
+    this.attackBonus = 0;        // flat damage addition (training ground)
+
+    // Character-specific stats
+    this.defensePct  = charCfg.DEFENSE_PCT || 0;   // % reduction (warrior passive)
+    this.damageMult  = charCfg.DAMAGE_MULT || 1.0;
+    this.speed       = charCfg.SPEED;
+    this.attackRange = charCfg.ATTACK_RANGE;
+    this.attackRate  = charCfg.ATTACK_RATE;
+    this.aoeOnHit    = charCfg.AOE   || false;
+    this.aoeRadius   = charCfg.AOE_RADIUS || 0;
   }
 
   update(cursors) {
     if (this.isDead) return;
 
-    const speed = CONFIG.PLAYER.SPEED;
-    let vx = 0;
-    let vy = 0;
+    const speed = this.speed;
+    let vx = 0, vy = 0;
 
     if (cursors.left.isDown  || cursors.leftArrow.isDown)  vx = -speed;
     if (cursors.right.isDown || cursors.rightArrow.isDown) vx =  speed;
     if (cursors.up.isDown    || cursors.upArrow.isDown)    vy = -speed;
     if (cursors.down.isDown  || cursors.downArrow.isDown)  vy =  speed;
 
-    // Normalize diagonal
-    if (vx !== 0 && vy !== 0) {
-      vx *= 0.7071;
-      vy *= 0.7071;
-    }
+    if (vx !== 0 && vy !== 0) { vx *= 0.7071; vy *= 0.7071; }
 
     if (this.sprite.body) this.sprite.body.setVelocity(vx, vy);
 
-    // Flip sprite to face movement direction
     if (vx < 0) this.sprite.setFlipX(true);
     if (vx > 0) this.sprite.setFlipX(false);
   }
 
   takeDamage(amount) {
     if (this.isDead) return;
-    const effective = Math.max(1, amount - this.defense);
+    // 1) flat reduction from buildings
+    // 2) percentage reduction from warrior passive
+    const afterFlat = Math.max(0, amount - this.defense);
+    const effective = Math.max(1, Math.round(afterFlat * (1 - this.defensePct)));
     this.hp = Math.max(0, this.hp - effective);
     EventBus.emit('player_hp_changed', this.hp, this.maxHp);
 
-    // Red tint flash
     this.sprite.setTint(0xFF4444);
     this.scene.time.delayedCall(150, () => {
-      if (this.sprite && this.sprite.active) {
-        this.sprite.clearTint();
-      }
+      if (this.sprite && this.sprite.active) this.sprite.clearTint();
     });
 
-    if (this.hp <= 0) {
-      this._die();
-    }
+    if (this.hp <= 0) this._die();
   }
 
   _die() {
     if (this.isDead) return;
     this.isDead = true;
-
     if (this.sprite.body) {
       this.sprite.body.setVelocity(0, 0);
       this.sprite.body.enable = false;
     }
-
     this.scene.tweens.add({
-      targets: this.sprite,
-      alpha: 0,
-      duration: 600,
-      onComplete: () => {
-        this.scene.gameOver();
-      },
+      targets: this.sprite, alpha: 0, duration: 600,
+      onComplete: () => { this.scene.gameOver(); },
     });
   }
 

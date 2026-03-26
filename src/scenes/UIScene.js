@@ -21,7 +21,7 @@ export class UIScene extends Phaser.Scene {
   update() {
     const gameScene = this.scene.get('GameScene');
     if (gameScene && gameScene.waveSystem) {
-      this.hud.update(gameScene.waveSystem);
+      this.hud.update(gameScene.waveSystem, gameScene.gameMode, gameScene.gameTimer);
     }
   }
 

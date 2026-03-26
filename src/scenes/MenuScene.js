@@ -68,7 +68,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     btnBg.on('pointerover', () => { btnBg.setFillStyle(0xAA1111); btnText.setScale(1.05); });
     btnBg.on('pointerout',  () => { btnBg.setFillStyle(0x8B0000); btnText.setScale(1); });
-    btnBg.on('pointerdown', () => { this.scene.start('GameScene'); });
+    btnBg.on('pointerdown', () => { this.scene.start('CharacterSelectScene'); });
 
     // Balance panel button
     const cfgBg = this.add.rectangle(WIDTH / 2, HEIGHT / 2 + 88, 220, 40, 0x1a2a1a)
@@ -83,7 +83,7 @@ export class MenuScene extends Phaser.Scene {
     // Controls hint
     this.add.text(WIDTH / 2, HEIGHT - 90, '操作說明', { fontSize: '15px', color: '#888888' }).setOrigin(0.5);
     this.add.text(WIDTH / 2, HEIGHT - 65,
-      'WASD 移動   靠近資源自動採集   [B] 建造   點擊建築升級   右鍵/[ESC] 取消   [P] 暫停   [F] 集結士兵',
+      'WASD 移動   靠近資源自動採集   1-0 建造   點擊建築升級   右鍵/[ESC] 取消   [P] 暫停   [F] 集結士兵',
       { fontSize: '12px', color: '#666666' }).setOrigin(0.5);
 
     // Pulsing start button

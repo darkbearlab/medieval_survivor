@@ -15,6 +15,12 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' });
   }
 
+  init(data) {
+    this.characterKey = (data && data.characterKey) || 'ranger';
+    this.gameMode     = (data && data.gameMode)     || 'endless';
+    this.timeLimit    = (data && data.timeLimit)    || CONFIG.GAME_MODES.TIMED.DURATION;
+  }
+
   create() {
     const { WORLD_WIDTH, WORLD_HEIGHT, TOWN_CENTER } = CONFIG;
 
@@ -59,7 +65,7 @@ export class GameScene extends Phaser.Scene {
     // --- Entities ---
     this.townCenter    = new TownCenter(this, TOWN_CENTER.X, TOWN_CENTER.Y);
     this.resourceNodes = this._createResourceNodes();
-    this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120);
+    this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120, this.characterKey);
 
     // --- Terrain (impassable rocks) ---
     // Disabled: terrain caused enemies to get stuck. Class/method preserved for future use.
@@ -240,6 +246,9 @@ export class GameScene extends Phaser.Scene {
     // --- Boss timer ---
     this.bossTimer = CONFIG.BOSS.SPAWN_INTERVAL * 1000;
 
+    // --- Game mode timer ---
+    this.gameTimer = this.gameMode === 'timed' ? this.timeLimit * 1000 : null;
+
     // --- Pause state ---
     this.isPaused = false;
     this._pauseOverlay = this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x000000, 0.65)
@@ -391,7 +400,12 @@ export class GameScene extends Phaser.Scene {
     const entity = enemySprite.getData('entity');
     const dmg    = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
     if (entity) entity.takeDamage(dmg);
+    const px = projectile.x, py = projectile.y;
     projectile.destroy();
+    // Mage character: every hit triggers AoE explosion
+    if (this.player && this.player.aoeOnHit) {
+      this._triggerPlayerAoE(px, py, Math.round(dmg * 0.65));
+    }
   }
 
   _onEnemyHitTower(enemySprite, towerSprite) {
@@ -572,6 +586,9 @@ export class GameScene extends Phaser.Scene {
     const proj = this.projectiles.create(x, y, 'projectile');
     if (!proj || !proj.body) return;
     proj.setDepth(12);
+    // Tint projectile to match character type
+    if (this.player && this.player.aoeOnHit)     proj.setTint(0xCC44FF);   // mage — purple
+    else if (this.player && this.player.defensePct > 0) proj.setTint(0xFF6633); // warrior — red
     proj.setData('isProjectile', true);
     proj.setData('damage', damage);
     const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
@@ -581,6 +598,24 @@ export class GameScene extends Phaser.Scene {
     );
     this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN, () => {
       if (proj.active) proj.destroy();
+    });
+  }
+
+  _triggerPlayerAoE(x, y, damage) {
+    const radius = this.player.aoeRadius || 80;
+    // Violet explosion — distinct from enemy mage (purple/orange) and allied mage (teal)
+    const outer = this.add.circle(x, y, radius,        0x6600CC, 0.40).setDepth(20);
+    const inner = this.add.circle(x, y, radius * 0.45, 0xDD88FF, 0.75).setDepth(21);
+    this.tweens.add({
+      targets: [outer, inner], alpha: 0, scaleX: 1.5, scaleY: 1.5, duration: 400,
+      onComplete: () => { outer.destroy(); inner.destroy(); },
+    });
+    this.enemies.getChildren().forEach(sprite => {
+      if (!sprite.active) return;
+      const entity = sprite.getData('entity');
+      if (!entity || entity.dead) return;
+      const d = Phaser.Math.Distance.Between(x, y, sprite.x, sprite.y);
+      if (d < radius) entity.takeDamage(damage);
     });
   }
 
@@ -712,7 +747,30 @@ export class GameScene extends Phaser.Scene {
 
     this.time.delayedCall(700, () => {
       this.scene.stop('UIScene');
-      this.scene.start('GameOverScene', { wave: this.waveSystem.currentWave });
+      this.scene.start('GameOverScene', {
+        wave:         this.waveSystem.currentWave,
+        characterKey: this.characterKey,
+        gameMode:     this.gameMode,
+        timeLimit:    this.timeLimit,
+      });
+    });
+  }
+
+  _victory() {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+
+    // Golden flash
+    this.cameras.main.flash(600, 255, 215, 0);
+
+    this.time.delayedCall(900, () => {
+      this.scene.stop('UIScene');
+      this.scene.start('VictoryScene', {
+        wave:         this.waveSystem.currentWave,
+        timeLimit:    this.timeLimit,
+        characterKey: this.characterKey,
+        gameMode:     this.gameMode,
+      });
     });
   }
 
@@ -773,16 +831,17 @@ export class GameScene extends Phaser.Scene {
     // Player movement
     this.player.update(this.cursors);
 
-    // Auto-attack nearest enemy
+    // Auto-attack nearest enemy — uses character-specific range, rate, damage
     if (!this.player.isDead && time > this.nextAttackTime) {
       const target = this._findNearestEnemy(
         this.player.x,
         this.player.y,
-        CONFIG.PLAYER.ATTACK_RANGE
+        this.player.attackRange
       );
       if (target) {
-        this._fireProjectile(this.player.x, this.player.y, target, CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus);
-        this.nextAttackTime = time + CONFIG.PLAYER.ATTACK_RATE;
+        const dmg = Math.round((CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus) * this.player.damageMult);
+        this._fireProjectile(this.player.x, this.player.y, target, dmg);
+        this.nextAttackTime = time + this.player.attackRate;
       }
     }
 
@@ -862,6 +921,16 @@ export class GameScene extends Phaser.Scene {
 
     // Auto-collect
     this._updateAutoCollect(delta);
+
+    // Game mode timer (timed mode only)
+    if (this.gameTimer !== null) {
+      this.gameTimer -= delta;
+      if (this.gameTimer <= 0) {
+        this.gameTimer = 0;
+        this._victory();
+        return;
+      }
+    }
 
     // Boss timer
     this.bossTimer -= delta;
