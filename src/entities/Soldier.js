@@ -65,21 +65,22 @@ export class Soldier {
       }
       this._doAttack(time, target);
     } else {
-      // ── Building-anchored: detect from barracks position ─────────────────
+      // ── Building-anchored: detect from SELF position ──────────────────────
+      // Using self position prevents the archer "dance" — if a soldier has
+      // chased an enemy, it keeps fighting until the enemy leaves the soldier's
+      // own detection radius, not the building's.
       const bx = this.barracks.x, by = this.barracks.y;
-      const target = this._findNearestEnemyFromPos(bx, by, CONFIG.SOLDIERS.DETECT_RANGE);
+      const target = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, CONFIG.SOLDIERS.DETECT_RANGE);
 
       if (!target) {
-        // No enemy in range — return home
+        // No enemy in sight — return home
         const homeDist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, bx, by);
         if (homeDist > 40) this._moveDirectTo(bx, by);
         else if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         this._drawHpBar();
         return;
       }
-      // Enemy detected from barracks → pursue and attack nearest enemy to self
-      const chase = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, Infinity);
-      this._doAttack(time, chase || target);
+      this._doAttack(time, target);
     }
 
     this._drawHpBar();

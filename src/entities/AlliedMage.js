@@ -63,21 +63,19 @@ export class AlliedMage {
       }
       this._doAttack(time, target);
     } else {
-      // ── Building-anchored: detect from tower position ─────────────────────
+      // ── Building-anchored: detect from SELF position ──────────────────────
       const tx = this.tower.x, ty = this.tower.y;
-      const target = this._findNearestEnemyFromPos(tx, ty, CONFIG.ALLIED_MAGES.DETECT_RANGE);
+      const target = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, CONFIG.ALLIED_MAGES.DETECT_RANGE);
 
       if (!target) {
-        // No enemy in range — return home
+        // No enemy in sight — return home
         const homeDist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, tx, ty);
         if (homeDist > 40) this._moveDirectTo(tx, ty);
         else if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         this._drawHpBar();
         return;
       }
-      // Enemy detected from tower → pursue nearest enemy to self
-      const chase = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, Infinity);
-      this._doAttack(time, chase || target);
+      this._doAttack(time, target);
     }
 
     this._drawHpBar();

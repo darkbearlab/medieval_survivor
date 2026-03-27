@@ -88,6 +88,36 @@ export class MenuScene extends Phaser.Scene {
 
     // Pulsing start button
     this.tweens.add({ targets: btnBg, scaleX: 1.02, scaleY: 1.02, yoyo: true, repeat: -1, duration: 900 });
+
+    // ── Patch notes panel ─────────────────────────────────────────────────
+    const pnotes = [
+      '📋  最新調整內容',
+      '',
+      '▸ 食堂 → 旅店：現可對附近士兵和法師回血',
+      '▸ 士兵 / 法師以自身視野判定追擊，',
+      '   不再因建築視野而與弓箭手跳探戈',
+      '▸ 弓箭手攻擊建築大幅削弱 (3傷害)',
+      '▸ 精英敵人每波出現，擊殺掉落寶箱',
+      '▸ 寶箱可選取武器升級或屬性強化',
+      '▸ 第六晚後開始定向大規模突擊',
+      '▸ 新增計時模式 / 無盡模式選擇',
+    ];
+    const pnX = WIDTH - 200;
+    const pnY = HEIGHT / 2 - 60;
+    const lineH = 19;
+    const panH = pnotes.length * lineH + 24;
+
+    this.add.rectangle(pnX, pnY, 364, panH, 0x050e05, 0.82)
+      .setStrokeStyle(1, 0x2a4a2a);
+
+    pnotes.forEach((line, i) => {
+      const isTitle = i === 0;
+      this.add.text(pnX - 164, pnY - panH / 2 + 12 + i * lineH, line, {
+        fontSize: isTitle ? '13px' : '12px',
+        color: isTitle ? '#88FF88' : '#778877',
+        fontFamily: isTitle ? 'Georgia, serif' : 'sans-serif',
+      }).setOrigin(0, 0);
+    });
   }
 
   _openBalancePanel() {
