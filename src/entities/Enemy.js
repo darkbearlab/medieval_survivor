@@ -157,6 +157,7 @@ export class Enemy {
   takeDamage(amount) {
     if (this.dead) return;
     this.hp -= amount;
+    this.scene.soundManager?.play('enemy_hit');
     if (this.hp <= 0) this._die();
   }
 
@@ -166,6 +167,25 @@ export class Enemy {
 
     this.scene.economy.add('gold', this.goldReward);
     EventBus.emit('resources_updated', this.scene.economy.resources);
+    this.scene.soundManager?.play('enemy_die');
+
+    // Death particle burst — 6 small dots scatter outward
+    if (this.sprite.active) {
+      const px = this.sprite.x, py = this.sprite.y;
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + Math.random() * 0.8;
+        const dist  = 16 + Math.random() * 22;
+        const dot   = this.scene.add.circle(px, py, 3, 0xFF2222, 0.9).setDepth(25);
+        this.scene.tweens.add({
+          targets: dot,
+          x: px + Math.cos(angle) * dist,
+          y: py + Math.sin(angle) * dist,
+          alpha: 0, scale: 0.2,
+          duration: 320 + Math.random() * 160,
+          onComplete: () => dot.destroy(),
+        });
+      }
+    }
 
     if (this.sprite.active) {
       this.scene.tweens.add({

@@ -124,7 +124,7 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     GATHERING_POST: {
       COST: { wood: 12, stone: 8 },
       HP: 80,
-      RANGE: 130,         // collect radius
+      RANGE: 150,         // collect radius
       COLLECT_RATE: 800,  // ms per node
     },
     REPAIR_WORKSHOP: {
@@ -244,7 +244,7 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
   ALLIED_MAGES: {
     LEASH_RANGE:  200,   // max distance from player when deployed/rally mode
     DETECT_RANGE: 300,   // distance from MageTower to scan for enemies
-    SPAWN_RATE: 12000,   // slower than soldiers — mages are powerful
+    SPAWN_RATE: 10000,   // slower than soldiers — mages are powerful
     LEVEL: {
       1: { MAX: 1 },
       2: { MAX: 2 },

@@ -11,6 +11,7 @@ import { PathFinder }        from '../utils/PathFinder.js';
 import { Boss }              from '../entities/Boss.js';
 import { WeaponMount }      from '../entities/WeaponMount.js';
 import { Chest }            from '../entities/Chest.js';
+import { SoundManager }     from '../utils/SoundManager.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -35,8 +36,10 @@ export class GameScene extends Phaser.Scene {
     this.add.tileSprite(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 'ground').setOrigin(0, 0).setDepth(0);
 
     // --- Systems ---
-    this.economy    = new EconomySystem();
-    this.waveSystem = new WaveSystem(this);
+    this.economy       = new EconomySystem();
+    this.waveSystem    = new WaveSystem(this);
+    this.soundManager  = new SoundManager();
+    this._smokeCooldown = 0;
 
     // --- Physics groups ---
     this.enemies         = this.physics.add.group();
@@ -425,6 +428,8 @@ export class GameScene extends Phaser.Scene {
         this._collectProgress.delete(nearestNode);
         nearestNode.collect(this.economy);
         EventBus.emit('resources_updated', this.economy.resources);
+        this.soundManager.play('collect');
+        this._showCollectFloat(nearestNode);
       }
     }
   }
@@ -494,6 +499,7 @@ export class GameScene extends Phaser.Scene {
         const enemyEntity = enemySprite.getData('entity');
         const dmg = enemyEntity ? enemyEntity.damage : CONFIG.ENEMIES.BANDIT.DAMAGE;
         wallEntity.takeDamage(dmg);
+        this.soundManager.play('building_hit');
       }
     }
   }
@@ -508,6 +514,7 @@ export class GameScene extends Phaser.Scene {
         const enemyEntity = enemySprite.getData('entity');
         const dmg = enemyEntity ? enemyEntity.damage : CONFIG.ENEMIES.BANDIT.DAMAGE;
         buildingEntity.takeDamage(dmg);
+        this.soundManager.play('building_hit');
       }
     }
   }
@@ -569,6 +576,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   _showExplosion(x, y, radius) {
+    this.soundManager.play('explosion');
     const outer = this.add.circle(x, y, radius,        0xFF6600, 0.55).setDepth(20);
     const inner = this.add.circle(x, y, radius * 0.45, 0xFFEE00, 0.80).setDepth(21);
     this.tweens.add({
@@ -601,6 +609,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   _triggerAlliedExplosion(x, y, damage) {
+    this.soundManager.play('explosion');
     const radius = CONFIG.ALLIED_MAGES.EXPLOSION_RADIUS;
     // Teal/green explosion to distinguish from enemy mage (purple/orange)
     const outer = this.add.circle(x, y, radius,        0x00CCAA, 0.55).setDepth(20);
@@ -920,6 +929,7 @@ export class GameScene extends Phaser.Scene {
       if (target) {
         const dmg = Math.round((CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus) * this.player.damageMult);
         this._fireProjectile(this.player.x, this.player.y, target, dmg, true);
+        this.soundManager.play('player_shoot');
         // dual_shot: fire extra projectiles at small angle offsets
         const extras = this.player._extraShots || 0;
         for (let s = 0; s < extras; s++) {
@@ -1047,6 +1057,9 @@ export class GameScene extends Phaser.Scene {
 
     // Weapon mounts
     for (const wm of this._weaponMounts) wm.update(time, delta);
+
+    // Building damage smoke
+    this._updateBuildingSmoke(delta);
 
     // Wave system
     this.waveSystem.update(delta);
@@ -1350,6 +1363,57 @@ export class GameScene extends Phaser.Scene {
       entity._origSpeed  = null;
       entity._frostTimer = null;
     });
+  }
+
+  // ─────────────────────────────────────────────
+  //  Visual feedback helpers (Phase 7)
+  // ─────────────────────────────────────────────
+
+  /** Floating "+木" / "+石" / "+食" text when player collects a node or farm. */
+  _showCollectFloat(node) {
+    const isFarm = node.type === 'farm';
+    const label  = isFarm ? '+食' : (node.type === 'tree' ? '+木' : '+石');
+    const color  = isFarm ? '#FFD700' : (node.type === 'tree' ? '#88EE88' : '#CCCCCC');
+    const t = this.add.text(node.x, node.y - 10, label, {
+      fontSize: '17px', color,
+      stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(30);
+    this.tweens.add({
+      targets: t, y: t.y - 38, alpha: 0, duration: 850,
+      onComplete: () => t.destroy(),
+    });
+  }
+
+  /**
+   * Emit a rising smoke puff from every building whose HP is below 30%.
+   * Called each frame; internal cooldown limits puffs to one batch per 900 ms.
+   */
+  _updateBuildingSmoke(delta) {
+    this._smokeCooldown += delta;
+    if (this._smokeCooldown < 900) return;
+    this._smokeCooldown = 0;
+
+    const bs = this.buildingSystem;
+    const lists = [
+      bs.walls, bs.towers, bs.smiths, bs.trainingGrounds,
+      bs.cafeterias, bs.gatheringPosts, bs.repairWorkshops,
+      bs.barracks, bs.mageTowers, bs.granaries, bs.castles,
+    ];
+    for (const list of lists) {
+      for (const b of list) {
+        if (b.dead || !b.hp || !b.maxHp) continue;
+        if (b.hp / b.maxHp > 0.30) continue;
+        const ox = b.x + Phaser.Math.Between(-8, 8);
+        const oy = b.y - 8;
+        const smoke = this.add.circle(ox, oy, 5, 0x999999, 0.55).setDepth(7);
+        this.tweens.add({
+          targets: smoke,
+          y: oy - 24, alpha: 0, scaleX: 2.2, scaleY: 2.2,
+          duration: 1100,
+          onComplete: () => smoke.destroy(),
+        });
+      }
+    }
   }
 
   shutdown() {

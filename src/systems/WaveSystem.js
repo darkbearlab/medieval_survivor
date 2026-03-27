@@ -45,6 +45,7 @@ export class WaveSystem {
     this.phase       = 'wave';
     this.countdown   = 0;
     this.waveElapsed = 0;
+    this.scene.soundManager?.play('new_wave');
 
     const pos      = this._cyclePos(this.currentWave);
     const base     = 3 + this.currentWave * 3;
