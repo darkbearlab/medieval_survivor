@@ -7,7 +7,7 @@ const DEFS = [
   { type: 'tower',      name: '箭塔',   key: '2', desc: '自動射擊  射程 200',          costText: '木材×10  石材×5',  texKey: 'building_tower'      },
   { type: 'smith',      name: '鐵匠鋪', key: '3', desc: '防禦+5  HP 120',              costText: '木材×15  石材×10', texKey: 'building_smith'      },
   { type: 'training',   name: '訓練場', key: '4', desc: '攻擊+10  HP 100',             costText: '木材×12  石材×8',  texKey: 'building_training'   },
-  { type: 'cafeteria',  name: '食堂',   key: '5', desc: '附近回血 3HP/s  HP 90',       costText: '木材×10  石材×5',  texKey: 'building_cafeteria'  },
+  { type: 'cafeteria',  name: '旅店',   key: '5', desc: '附近回血 3HP/s  HP 90',       costText: '木材×10  石材×5',  texKey: 'building_cafeteria'  },
   { type: 'gathering',  name: '採集所', key: '6', desc: '自動收集範圍內資源',          costText: '木材×12  石材×8',  texKey: 'building_gathering'  },
   { type: 'repair',     name: '維修工', key: '7', desc: '自動修復最低耐久建築',        costText: '木材×14  石材×10', texKey: 'building_repair'     },
   { type: 'barracks',   name: '兵營',   key: '8', desc: '自動生成士兵駐守',            costText: '木材×15  石材×12', texKey: 'building_barracks'   },

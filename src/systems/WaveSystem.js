@@ -48,6 +48,14 @@ export class WaveSystem {
 
     this._spawnEnemies(count, pos);
     this._spawnElite(this.currentWave);
+
+    // Coordinated assault: from 6th night (wave 18) onward, every night wave
+    if (pos === 3 && this.currentWave >= 18) {
+      this.scene.time.delayedCall(4000, () => {
+        if (!this.scene.isGameOver) this._triggerCoordinatedAssault();
+      });
+    }
+
     EventBus.emit('wave_started', this.currentWave);
   }
 
@@ -87,6 +95,70 @@ export class WaveSystem {
       scene.enemies.add(elite.sprite);
       scene._showEliteAlert(elite._nameTag ? elite._nameTag.text : '⚔ 精英敵人');
     });
+  }
+
+  _triggerCoordinatedAssault() {
+    const { WORLD_WIDTH, WORLD_HEIGHT } = CONFIG;
+    const scene  = this.scene;
+    const wave   = this.currentWave;
+    const margin = 40;
+
+    // Pick direction
+    const dirIndex = Phaser.Math.Between(0, 3);
+    const dirNames = ['北方', '南方', '西方', '東方'];
+    const dirName  = dirNames[dirIndex];
+
+    // Pick theme — heavier types unlock later
+    const themes = [
+      { key: 'archer',  name: '弓箭手突擊',  type: 'archer'  },
+      { key: 'heavy',   name: '重甲衝鋒',    type: 'heavy'   },
+      { key: 'bandit',  name: '強盜猛攻',    type: 'bandit'  },
+    ];
+    if (wave >= 21) themes.push({ key: 'mage', name: '黑暗法師軍團', type: 'mage' });
+    const theme = themes[Phaser.Math.Between(0, themes.length - 1)];
+
+    // How many in the assault — scales with wave
+    const assaultCount = Math.min(6 + Math.floor((wave - 18) / 3) * 2, 18);
+
+    scene._showCoordinatedAssaultAlert(dirName, theme.name);
+
+    for (let i = 0; i < assaultCount; i++) {
+      scene.time.delayedCall(i * 200, () => {
+        if (scene.isGameOver) return;
+
+        let x, y;
+        const spread = 120;
+        const mid = 0.5;
+        switch (dirIndex) {
+          case 0: // North
+            x = Phaser.Math.Between(Math.round(WORLD_WIDTH * (mid - 0.15)), Math.round(WORLD_WIDTH * (mid + 0.15)));
+            y = margin + Phaser.Math.Between(-spread / 2, spread / 2);
+            break;
+          case 1: // South
+            x = Phaser.Math.Between(Math.round(WORLD_WIDTH * (mid - 0.15)), Math.round(WORLD_WIDTH * (mid + 0.15)));
+            y = WORLD_HEIGHT - margin + Phaser.Math.Between(-spread / 2, spread / 2);
+            break;
+          case 2: // West
+            x = margin + Phaser.Math.Between(-spread / 2, spread / 2);
+            y = Phaser.Math.Between(Math.round(WORLD_HEIGHT * (mid - 0.15)), Math.round(WORLD_HEIGHT * (mid + 0.15)));
+            break;
+          default: // East
+            x = WORLD_WIDTH - margin + Phaser.Math.Between(-spread / 2, spread / 2);
+            y = Phaser.Math.Between(Math.round(WORLD_HEIGHT * (mid - 0.15)), Math.round(WORLD_HEIGHT * (mid + 0.15)));
+        }
+        x = Phaser.Math.Clamp(x, margin, WORLD_WIDTH - margin);
+        y = Phaser.Math.Clamp(y, margin, WORLD_HEIGHT - margin);
+
+        let enemy;
+        switch (theme.type) {
+          case 'archer': enemy = new Archer(scene, x, y, wave); break;
+          case 'heavy':  enemy = new Heavy(scene, x, y, wave);  break;
+          case 'mage':   enemy = new Mage(scene, x, y, wave);   break;
+          default:       enemy = new Enemy(scene, x, y, scaleCfg(CONFIG.ENEMIES.BANDIT, wave));
+        }
+        scene.enemies.add(enemy.sprite);
+      });
+    }
   }
 
   _spawnEnemies(count, cyclePos) {

@@ -913,16 +913,31 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Cafeteria healing — regen HP when player is near
-    if (!this.player.isDead && this.player.hp < this.player.maxHp) {
-      for (const c of this.buildingSystem.cafeterias) {
-        if (c.dead) continue;
+    // Tavern healing — regen HP when player/soldiers/mages are near
+    for (const c of this.buildingSystem.cafeterias) {
+      if (c.dead) continue;
+      const healAmt = c.healRate * delta / 1000;
+
+      if (!this.player.isDead && this.player.hp < this.player.maxHp) {
         const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, c.x, c.y);
         if (dist < c.healRange) {
-          this.player.hp = Math.min(this.player.maxHp, this.player.hp + c.healRate * delta / 1000);
+          this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmt);
           EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
-          break;
         }
+      }
+
+      for (const s of this.buildingSystem.soldiers) {
+        if (s.dead) continue;
+        if (s.hp >= s.maxHp) continue;
+        const dist = Phaser.Math.Distance.Between(s.x, s.y, c.x, c.y);
+        if (dist < c.healRange) s.hp = Math.min(s.maxHp, s.hp + healAmt);
+      }
+
+      for (const m of this.buildingSystem.alliedMages) {
+        if (m.dead) continue;
+        if (m.hp >= m.maxHp) continue;
+        const dist = Phaser.Math.Distance.Between(m.x, m.y, c.x, c.y);
+        if (dist < c.healRange) m.hp = Math.min(m.maxHp, m.hp + healAmt);
       }
     }
 
@@ -1094,6 +1109,25 @@ export class GameScene extends Phaser.Scene {
       duration: 350,
       yoyo: true,
       hold: 1000,
+      onComplete: () => alert.destroy(),
+    });
+  }
+
+  _showCoordinatedAssaultAlert(direction, themeName) {
+    const { WIDTH, HEIGHT } = CONFIG;
+    const msg   = `⚠ ${direction}${themeName}！`;
+    const alert = this.add.text(WIDTH / 2, HEIGHT / 2 - 30, msg, {
+      fontSize: '28px', fontFamily: 'Georgia, serif',
+      color: '#FF4444', stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
+
+    this.tweens.add({
+      targets: alert,
+      alpha: { from: 0, to: 1 },
+      y: HEIGHT / 2 - 50,
+      duration: 400,
+      yoyo: true,
+      hold: 1400,
       onComplete: () => alert.destroy(),
     });
   }
