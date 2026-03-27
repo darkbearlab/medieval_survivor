@@ -19,6 +19,7 @@ export class WaveSystem {
     this.currentWave = 0;
     this.phase       = 'prep';     // 'prep' | 'wave' | 'intermission'
     this.countdown   = CONFIG.WAVES.PREP_TIME;
+    this.waveElapsed = 0;
   }
 
   /** Returns 1, 2, or 3 for the current wave's position in the cycle. */
@@ -30,7 +31,10 @@ export class WaveSystem {
     this.countdown -= delta / 1000;
 
     if (this.phase === 'wave') {
-      if (this.scene.enemies.countActive(true) === 0) this._endWave();
+      this.waveElapsed += delta / 1000;
+      const cleared = this.scene.enemies.countActive(true) === 0;
+      const timeout = this.waveElapsed >= CONFIG.WAVES.WAVE_TIME_LIMIT;
+      if (cleared || timeout) this._endWave(timeout && !cleared);
     } else if (this.countdown <= 0) {
       this._startWave();
     }
@@ -38,8 +42,9 @@ export class WaveSystem {
 
   _startWave() {
     this.currentWave++;
-    this.phase     = 'wave';
-    this.countdown = 0;
+    this.phase       = 'wave';
+    this.countdown   = 0;
+    this.waveElapsed = 0;
 
     const pos      = this._cyclePos(this.currentWave);
     const base     = 3 + this.currentWave * 3;
@@ -59,9 +64,9 @@ export class WaveSystem {
     EventBus.emit('wave_started', this.currentWave);
   }
 
-  _endWave() {
+  _endWave(forced = false) {
     this.phase     = 'intermission';
-    this.countdown = CONFIG.WAVES.BETWEEN_TIME;
+    this.countdown = forced ? 0 : CONFIG.WAVES.BETWEEN_TIME;
     EventBus.emit('wave_ended', this.currentWave);
   }
 

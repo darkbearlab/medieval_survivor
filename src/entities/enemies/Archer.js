@@ -61,8 +61,8 @@ export class Archer extends Enemy {
         EventBus.emit('town_hp_changed', tc.hp, tc.maxHp);
         if (tc.hp <= 0 && !this.scene.isGameOver) this.scene.gameOver();
       }
-    } else if (dist < cfg.KEEP_MIN) {
-      // Back away
+    } else if (target === player && dist < cfg.KEEP_MIN) {
+      // Back away only from the player — stand firm against allied soldiers/mages
       const angle = Phaser.Math.Angle.Between(target.x, target.y, this.sprite.x, this.sprite.y);
       if (this.sprite.body) this.sprite.body.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
       this.sprite.setFlipX(Math.cos(angle) < 0);

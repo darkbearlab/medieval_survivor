@@ -420,9 +420,9 @@ export class GameScene extends Phaser.Scene {
 
     if (fp && this.player) {
       if (this.player.aoeOnHit)      this._triggerPlayerAoE(px, py, Math.round(dmg * 0.65));
-      if (this.player._explosiveShots) this._triggerMountExplosion(px, py, Math.round(dmg * 0.5));
-      if (this.player._chainBolt && entity && !entity.dead) this._chainBoltHit(entity, dmg);
-      if (this.player._frostBolt && entity && !entity.dead) this._applyFrost(entity);
+      if (this.player._explosiveShots) this._triggerMountExplosion(px, py, Math.round(dmg * 0.5), this.player._explosiveShots);
+      if (this.player._chainBolt && entity && !entity.dead) this._chainBoltHit(entity, dmg, this.player._chainBolt);
+      if (this.player._frostBolt && entity && !entity.dead) this._applyFrost(entity, this.player._frostBolt);
     }
   }
 
@@ -1163,13 +1163,13 @@ export class GameScene extends Phaser.Scene {
         this._weaponMounts.push(new WeaponMount(this, this.player, wu));
         break;
       case 'explosive':
-        this.player._explosiveShots = true;
+        this.player._explosiveShots = (this.player._explosiveShots || 0) + 1;
         break;
       case 'chain_bolt':
-        this.player._chainBolt = true;
+        this.player._chainBolt = (this.player._chainBolt || 0) + 1;
         break;
       case 'frost_bolt':
-        this.player._frostBolt = true;
+        this.player._frostBolt = (this.player._frostBolt || 0) + 1;
         break;
       case 'guardian': {
         // Two guardian mounts, offset by π
@@ -1215,8 +1215,10 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  _triggerMountExplosion(x, y, damage) {
-    const r = CONFIG.WEAPON_UPGRADES.explosive.AOE_RADIUS;
+  _triggerMountExplosion(x, y, damage, stacks = 1) {
+    // Each additional stack adds 25% radius and 30% damage
+    const r = CONFIG.WEAPON_UPGRADES.explosive.AOE_RADIUS * (1 + 0.25 * (stacks - 1));
+    damage   = Math.round(damage * (1 + 0.30 * (stacks - 1)));
     const outer = this.add.circle(x, y, r,        0xFF6600, 0.50).setDepth(20);
     const inner = this.add.circle(x, y, r * 0.4,  0xFFCC00, 0.80).setDepth(21);
     this.tweens.add({
@@ -1231,34 +1233,45 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  _chainBoltHit(hitEntity, dmg) {
-    // Find nearest enemy that isn't the one we just hit
+  _chainBoltHit(hitEntity, dmg, chainsLeft = 1, visited = null) {
+    if (chainsLeft <= 0) return;
+    visited = visited || new Set([hitEntity]);
+
+    // Find nearest enemy not yet visited
     let nearest = null, nearestDist = 300;
     this.enemies.getChildren().forEach(sprite => {
       if (!sprite.active) return;
       const e = sprite.getData('entity');
-      if (!e || e.dead || e === hitEntity) return;
+      if (!e || e.dead || visited.has(e)) return;
       const d = Phaser.Math.Distance.Between(hitEntity.sprite.x, hitEntity.sprite.y, sprite.x, sprite.y);
       if (d < nearestDist) { nearestDist = d; nearest = sprite; }
     });
     if (!nearest) return;
+
     // Draw a brief lightning line
     const g = this.add.graphics().setDepth(25);
     g.lineStyle(2, 0xAADDFF, 0.9);
     g.lineBetween(hitEntity.sprite.x, hitEntity.sprite.y, nearest.x, nearest.y);
     this.tweens.add({ targets: g, alpha: 0, duration: 250, onComplete: () => g.destroy() });
-    // Damage the chained target
+
+    // Damage and recurse
     const chainEntity = nearest.getData('entity');
-    if (chainEntity) chainEntity.takeDamage(Math.round(dmg * 0.6));
+    if (chainEntity) {
+      chainEntity.takeDamage(Math.round(dmg * 0.6));
+      visited.add(chainEntity);
+      this._chainBoltHit(chainEntity, Math.round(dmg * 0.6), chainsLeft - 1, visited);
+    }
   }
 
-  _applyFrost(entity) {
+  _applyFrost(entity, stacks = 1) {
+    // Each additional stack: +1s duration, -5% more speed reduction (floor 30%)
+    const slowPct  = Math.max(0.30, 0.70 - 0.05 * (stacks - 1));
+    const duration = 2000 + 1000 * (stacks - 1);
     if (!entity._origSpeed) entity._origSpeed = entity.speed;
-    entity.speed = Math.round(entity._origSpeed * 0.70);
+    entity.speed = Math.round(entity._origSpeed * slowPct);
     if (entity.sprite && entity.sprite.active) entity.sprite.setTint(0x88AAFF);
-    // Clear any previous timer
     if (entity._frostTimer) entity._frostTimer.remove();
-    entity._frostTimer = this.time.delayedCall(2000, () => {
+    entity._frostTimer = this.time.delayedCall(duration, () => {
       if (!entity.dead) {
         entity.speed = entity._origSpeed;
         if (entity.sprite && entity.sprite.active) entity.sprite.clearTint();
