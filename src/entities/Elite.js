@@ -33,7 +33,13 @@ export class Elite extends Enemy {
 
     this.sprite.setScale(ec.SCALE);
     this.sprite.setTint(ec.TINT);
-    if (this.sprite.body) this.sprite.body.setSize(ec.BODY_SIZE, ec.BODY_SIZE);
+    if (this.sprite.body) {
+      this.sprite.body.setSize(ec.BODY_SIZE, ec.BODY_SIZE);
+      if (eliteType === 'heavy') {
+        this.isHeavy = true;
+        this.sprite.body.pushable = false;
+      }
+    }
 
     this._nameTag = scene.add.text(x, y - 36, ELITE_NAMES[eliteType] || '⚔ 精英', {
       fontSize: '12px', color: '#FFAA00',

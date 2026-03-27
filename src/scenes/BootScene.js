@@ -31,6 +31,8 @@ export class BootScene extends Phaser.Scene {
     this._genPlayerWarrior();
     this._genPlayerMage();
     this._genChest();
+    this._genGranary();
+    this._genCastle();
     this.scene.start('MenuScene');
   }
 
@@ -718,6 +720,54 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(8, 28, 6, 4);
     g.fillRect(18, 28, 6, 4);
     g.generateTexture('player_mage', 32, 32);
+    g.destroy();
+  }
+
+  _genGranary() {
+    const g = this.make.graphics({ add: false });
+    // Golden-brown wooden silo
+    g.fillStyle(0x8B5E3C);
+    g.fillRect(6, 8, 20, 22);   // main body
+    g.fillStyle(0x6B3F1F);
+    g.fillRect(6, 8, 20, 4);    // dark roof band
+    g.fillStyle(0xA0723A);
+    g.fillRect(4, 6, 24, 4);    // roof
+    g.fillStyle(0xC8A464);
+    g.fillRect(10, 12, 4, 18);  // vertical plank
+    g.fillRect(18, 12, 4, 18);  // vertical plank
+    g.fillStyle(0xFFCC44);
+    g.fillRect(11, 20, 10, 6);  // door (golden)
+    g.fillStyle(0x4A2A0A);
+    g.fillRect(6, 28, 20, 2);   // base shadow
+    g.generateTexture('building_granary', 32, 32);
+    g.destroy();
+  }
+
+  _genCastle() {
+    const g = this.make.graphics({ add: false });
+    // Stone castle — 48x48 so it's visibly larger
+    g.fillStyle(0x888888);
+    g.fillRect(0, 8, 48, 40);    // main walls
+    g.fillStyle(0x666666);
+    g.fillRect(0, 8, 48, 6);     // battlement base
+    // Battlements (merlons)
+    for (let i = 0; i < 5; i++) {
+      g.fillRect(i * 10, 0, 6, 10);
+    }
+    g.fillStyle(0x555555);
+    g.fillRect(12, 20, 24, 28);  // inner keep
+    g.fillStyle(0x222222);
+    g.fillRect(18, 30, 12, 18);  // gate
+    g.fillStyle(0xAA8833);
+    g.fillRect(19, 31, 10, 17);  // gate interior
+    // Tower corners
+    g.fillStyle(0x777777);
+    g.fillRect(0, 8, 10, 40);
+    g.fillRect(38, 8, 10, 40);
+    g.fillStyle(0x999999, 0.4);
+    g.fillRect(2, 14, 6, 4);     // arrow slit left
+    g.fillRect(40, 14, 6, 4);    // arrow slit right
+    g.generateTexture('building_castle', 48, 48);
     g.destroy();
   }
 

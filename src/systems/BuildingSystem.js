@@ -10,6 +10,8 @@ import { RepairWorkshop } from '../entities/buildings/RepairWorkshop.js';
 import { Barracks }   from '../entities/buildings/Barracks.js';
 import { MageTower }  from '../entities/buildings/MageTower.js';
 import { Farm }       from '../entities/buildings/Farm.js';
+import { Granary }    from '../entities/buildings/Granary.js';
+import { Castle }     from '../entities/buildings/Castle.js';
 
 export class BuildingSystem {
   constructor(scene) {
@@ -26,20 +28,26 @@ export class BuildingSystem {
     this.mageTowers  = [];
     this.alliedMages = [];   // all living allied mages across all mage towers
     this.farms       = [];
+    this.granaries   = [];
+    this.castles     = [];
+    this._freePlace  = false;
+    this._freeUpgradeLevel = 0;
     this.placingType = null;
     this.previewSprite = null;
     this._justStarted = false;  // prevent same-click placement
   }
 
-  startPlacing(type) {
+  startPlacing(type, free = false, upgradeToLevel = 0) {
     this.cancelPlacing();
     this.placingType = type;
-    const texMap = { wall: 'building_wall', tower: 'building_tower', smith: 'building_smith', training: 'building_training', cafeteria: 'building_cafeteria', gathering: 'building_gathering', repair: 'building_repair', barracks: 'building_barracks', mage_tower: 'building_mage_tower', farm: 'building_farm' };
+    this._freePlace = free;
+    this._freeUpgradeLevel = upgradeToLevel;
+    const texMap = { wall: 'building_wall', tower: 'building_tower', smith: 'building_smith', training: 'building_training', cafeteria: 'building_cafeteria', gathering: 'building_gathering', repair: 'building_repair', barracks: 'building_barracks', mage_tower: 'building_mage_tower', farm: 'building_farm', granary: 'building_granary', castle: 'building_castle' };
     const texKey = texMap[type] || 'building_wall';
     this.previewSprite = this.scene.add.sprite(0, 0, texKey)
       .setAlpha(0.55)
       .setDepth(20)
-      .setTint(0x88ff88);
+      .setTint(this._freePlace ? 0xFFDD44 : 0x88ff88);
     this._justStarted = true;
   }
 
@@ -50,6 +58,8 @@ export class BuildingSystem {
     }
     this.placingType = null;
     this._justStarted = false;
+    this._freePlace = false;
+    this._freeUpgradeLevel = 0;
   }
 
   _snapToGrid(v) {
@@ -66,6 +76,20 @@ export class BuildingSystem {
     }
   }
 
+  _isCellOccupied(x, y) {
+    const lists = [
+      this.walls, this.towers, this.smiths, this.trainingGrounds,
+      this.cafeterias, this.gatheringPosts, this.repairWorkshops,
+      this.barracks, this.mageTowers, this.farms, this.granaries, this.castles,
+    ];
+    for (const list of lists) {
+      for (const b of list) {
+        if (!b.dead && b.x === x && b.y === y) return true;
+      }
+    }
+    return false;
+  }
+
   tryPlace(worldX, worldY) {
     if (!this.placingType) return false;
     if (this._justStarted) {
@@ -77,13 +101,22 @@ export class BuildingSystem {
     worldX = this._snapToGrid(worldX);
     worldY = this._snapToGrid(worldY);
 
-    const typeKeyMap = { wall: 'WALL', tower: 'TOWER', smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER', farm: 'FARM' };
+    const typeKeyMap = { wall: 'WALL', tower: 'TOWER', smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER', farm: 'FARM', granary: 'GRANARY', castle: 'CASTLE' };
     const typeKey = typeKeyMap[this.placingType] || this.placingType.toUpperCase();
     const cfg = CONFIG.BUILDINGS[typeKey];
     if (!cfg) return false;
 
-    // Check cost (gold can cover resource deficits at the configured rate)
-    if (!this.scene.economy.canAffordWithGold(cfg.COST)) {
+    // Check grid cell not already occupied
+    if (this._isCellOccupied(worldX, worldY)) {
+      EventBus.emit('build_failed', '此處已有建築');
+      return false;
+    }
+
+    // Free placement mode (from chest drop)
+    const isFree = this._freePlace;
+
+    // Check cost (skip if free placement)
+    if (!isFree && !this.scene.economy.canAffordWithGold(cfg.COST)) {
       EventBus.emit('build_failed', '資源不足（含金幣換算）');
       return false;
     }
@@ -95,9 +128,16 @@ export class BuildingSystem {
       return false;
     }
 
-    // Spend resources (auto-exchanges gold for any deficit)
-    this.scene.economy.spendWithGold(cfg.COST);
-    EventBus.emit('resources_updated', this.scene.economy.resources);
+    // Spend resources (skip if free placement)
+    if (!isFree) {
+      this.scene.economy.spendWithGold(cfg.COST);
+      EventBus.emit('resources_updated', this.scene.economy.resources);
+    }
+
+    // Reset free placement flag (single-use)
+    this._freePlace = false;
+    const upgLevel = this._freeUpgradeLevel;
+    this._freeUpgradeLevel = 0;
 
     // Create building
     if (this.placingType === 'wall') {
@@ -111,6 +151,7 @@ export class BuildingSystem {
       this.towers.push(tower);
       this.scene.towersGroup.add(tower.sprite);
       tower.sprite.refreshBody();
+      if (upgLevel >= 2) tower.upgrade();
     } else if (this.placingType === 'smith') {
       const smith = new Blacksmith(this.scene, worldX, worldY);
       this.smiths.push(smith);
@@ -149,6 +190,16 @@ export class BuildingSystem {
     } else if (this.placingType === 'farm') {
       const farm = new Farm(this.scene, worldX, worldY);
       this.farms.push(farm);
+    } else if (this.placingType === 'granary') {
+      const g = new Granary(this.scene, worldX, worldY);
+      this.granaries.push(g);
+      this.scene.granaryGroup.add(g.sprite);
+      g.sprite.refreshBody();
+    } else if (this.placingType === 'castle') {
+      const c = new Castle(this.scene, worldX, worldY);
+      this.castles.push(c);
+      this.scene.castleGroup.add(c.sprite);
+      c.sprite.refreshBody();
     }
 
     return true;
@@ -167,6 +218,9 @@ export class BuildingSystem {
     }
     for (const mt of this.mageTowers) {
       if (!mt.dead) mt.update(time);
+    }
+    for (const c of this.castles) {
+      if (!c.dead) c.update(time);
     }
     // Prune dead units from global lists
     this.soldiers    = this.soldiers.filter(s => !s.dead);

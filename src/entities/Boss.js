@@ -38,6 +38,10 @@ export class Boss extends Enemy {
     this.sprite.setTint(0xFF3300);
     if (this.sprite.body) {
       this.sprite.body.setSize(50, 50);
+      if (bossType === 'heavy') {
+        this.isHeavy = true;
+        this.sprite.body.pushable = false;
+      }
     }
 
     this._nameTag = scene.add.text(x, y - 50, BOSS_NAMES[bossType] || '☠ Boss', {

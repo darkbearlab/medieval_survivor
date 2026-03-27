@@ -152,9 +152,26 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       FOOD_YIELD: 10,     // food added per harvest
       REGEN_TIME: 15000,  // ms to regenerate after harvest
     },
+    GRANARY: {
+      COST: { wood: 12, stone: 6 },
+      HP: 80,
+      FOOD_CAP_BONUS: 30,
+    },
+    CASTLE: {
+      COST: {},
+      HP: 300,
+      RANGE: 300,
+      ATTACK_RATE: 600,
+      DAMAGE: 20,
+      MAX_SOLDIERS: 1,
+      MAX_MAGES: 1,
+      SOLDIER_RATE: 14000,
+      MAGE_RATE: 20000,
+    },
   },
 
   FOOD: {
+    BASE_CAP:     20, // starting food cap before any granary
     SOLDIER_COST: 5,  // food consumed per soldier spawn
     MAGE_COST:    8,  // food consumed per allied mage spawn
   },
@@ -201,6 +218,10 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     max_hp_up:  { name: '生命強化', desc: '最大生命值 +30，並恢復 30 HP', icon: '❤', AMOUNT: 30 },
     heal:       { name: '急速回血', desc: '立即恢復 50 HP（不超過上限）', icon: '✚', AMOUNT: 50 },
     gold_bonus: { name: '財富加持', desc: '立即獲得 60 金幣', icon: '💰', AMOUNT: 60 },
+
+    // ── Free building drops (chest only) ──────────────────────────────────
+    free_tower_lv2: { name: '★ 精英箭塔', desc: '免費放置一座升級版箭塔', icon: '🏹', type: 'free_building', buildType: 'tower_lv2' },
+    free_castle:    { name: '🏰 城堡',     desc: '免費放置城堡（射箭＋生兵＋召法師）', icon: '🏰', type: 'free_building', buildType: 'castle' },
   },
 
   SOLDIERS: {

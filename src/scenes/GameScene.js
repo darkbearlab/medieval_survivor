@@ -56,6 +56,8 @@ export class GameScene extends Phaser.Scene {
     this.alliedMagesGroup     = this.physics.add.group();
     this.alliedMageProjectiles = this.physics.add.group();
     this.mageProjectiles      = this.physics.add.group();
+    this.granaryGroup         = this.physics.add.staticGroup();
+    this.castleGroup          = this.physics.add.staticGroup();
 
     // --- Pathfinder (64×64 grid, 40px cells) ---
     const gridCells = CONFIG.WORLD_WIDTH / CONFIG.BUILDING_GRID;
@@ -168,8 +170,16 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.repairGroup,    this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.barracksGroup,   this._onEnemyHitSmithOrTraining, null, this);
     this.physics.add.collider(this.enemies, this.mageTowerGroup,  this._onEnemyHitSmithOrTraining, null, this);
-    this.physics.add.collider(this.enemies, this.soldiersGroup);   // physical blocking; damage via Enemy.update()
-    this.physics.add.collider(this.enemies, this.alliedMagesGroup); // physical blocking; damage via Enemy.update()
+    this.physics.add.collider(this.enemies, this.granaryGroup,    this._onEnemyHitSmithOrTraining, null, this);
+    this.physics.add.collider(this.enemies, this.castleGroup,     this._onEnemyHitSmithOrTraining, null, this);
+    // Heavy-type enemies (isHeavy flag) pass through soldiers/mages — only player-type blocking skipped.
+    // Walls/towers still block heavies normally via their own colliders.
+    const _notHeavy = (enemySprite) => {
+      const e = enemySprite.getData('entity');
+      return !(e && e.isHeavy);
+    };
+    this.physics.add.collider(this.enemies, this.soldiersGroup,   null, _notHeavy, this);
+    this.physics.add.collider(this.enemies, this.alliedMagesGroup, null, _notHeavy, this);
 
     // Player blocked by walls, towers, terrain, and town center
     this.physics.add.collider(this.player.sprite, this.wallsGroup);
@@ -183,6 +193,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player.sprite, this.repairGroup);
     this.physics.add.collider(this.player.sprite, this.barracksGroup);
     this.physics.add.collider(this.player.sprite, this.mageTowerGroup);
+    this.physics.add.collider(this.player.sprite, this.granaryGroup);
+    this.physics.add.collider(this.player.sprite, this.castleGroup);
 
     // Enemy projectiles damage buildings
     this.physics.add.overlap(this.enemyProjectiles, this.wallsGroup,     this._onEnemyProjHitBuilding, null, this);
@@ -194,6 +206,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.enemyProjectiles, this.repairGroup,    this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.barracksGroup,    this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.mageTowerGroup,   this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.granaryGroup,     this._onEnemyProjHitBuilding, null, this);
+    this.physics.add.overlap(this.enemyProjectiles, this.castleGroup,      this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.soldiersGroup,    this._onEnemyProjHitBuilding, null, this);
     this.physics.add.overlap(this.enemyProjectiles, this.alliedMagesGroup, this._onEnemyProjHitBuilding, null, this);
     // Allied mage projectiles damage enemies only (no friendly fire)
@@ -209,6 +223,8 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.mageProjectiles, this.repairGroup,    this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.barracksGroup,    this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.mageTowerGroup,   this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.granaryGroup,     this._onMageProjHitBuilding, null, this);
+    this.physics.add.overlap(this.mageProjectiles, this.castleGroup,      this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.soldiersGroup,    this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.alliedMagesGroup, this._onMageProjHitBuilding, null, this);
 
@@ -506,6 +522,8 @@ export class GameScene extends Phaser.Scene {
       this.buildingSystem.repairWorkshops,
       this.buildingSystem.barracks,
       this.buildingSystem.mageTowers,
+      this.buildingSystem.granaries,
+      this.buildingSystem.castles,
     ];
     for (const list of lists) {
       for (const b of list) {
@@ -717,6 +735,16 @@ export class GameScene extends Phaser.Scene {
       if (b.dead) continue;
       const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
       if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.granaries) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 22) { EventBus.emit('building_clicked', b); return; }
+    }
+    for (const b of this.buildingSystem.castles) {
+      if (b.dead) continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, b.x, b.y);
+      if (dist < 28) { EventBus.emit('building_clicked', b); return; }
     }
   }
 
@@ -1199,6 +1227,12 @@ export class GameScene extends Phaser.Scene {
       case 'gold_bonus':
         this.economy.add('gold', wu.AMOUNT);
         EventBus.emit('resources_updated', this.economy.resources);
+        break;
+      case 'free_tower_lv2':
+        this.buildingSystem.startPlacing('tower', true, 2);
+        break;
+      case 'free_castle':
+        this.buildingSystem.startPlacing('castle', true, 0);
         break;
     }
 

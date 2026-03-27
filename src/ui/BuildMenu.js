@@ -13,6 +13,7 @@ const DEFS = [
   { type: 'barracks',   name: '兵營',   key: '8', desc: '自動生成士兵駐守',            costText: '木材×15  石材×12', texKey: 'building_barracks'   },
   { type: 'mage_tower', name: '法師塔', key: '9', desc: '召喚友方法師  AoE 攻擊',      costText: '木材×20  石材×15', texKey: 'building_mage_tower' },
   { type: 'farm',       name: '農田',   key: '0', desc: '生產糧食  手動/採集所採收',   costText: '木材×6',           texKey: 'building_farm'       },
+  { type: 'granary',    name: '糧倉',   key: null, desc: '糧食上限+30  HP 80',          costText: '木材×12  石材×6',  texKey: 'building_granary'   },
 ];
 
 // ── Resources row ───────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ export class BuildMenu {
       }
 
       // key number label (top-left corner of slot)
-      const keyLbl = s.add.text(cx - SZ / 2 + 4, slotY - SZ / 2 + 3, def.key, {
+      const keyLbl = s.add.text(cx - SZ / 2 + 4, slotY - SZ / 2 + 3, def.key || '', {
         fontSize: '11px', color: '#666666',
       }).setOrigin(0, 0).setDepth(93).setScrollFactor(0);
 
@@ -182,7 +183,12 @@ export class BuildMenu {
 
   _updateResources(res) {
     for (const r of RES) {
-      if (this._resTexts[r.prop]) this._resTexts[r.prop].setText(`${res[r.prop]}`);
+      if (!this._resTexts[r.prop]) continue;
+      if (r.prop === 'food' && res.maxFood !== undefined) {
+        this._resTexts[r.prop].setText(`${res.food}/${res.maxFood}`);
+      } else {
+        this._resTexts[r.prop].setText(`${res[r.prop] ?? 0}`);
+      }
     }
   }
 

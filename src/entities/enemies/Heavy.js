@@ -9,6 +9,8 @@ import { Enemy, scaleCfg } from '../Enemy.js';
 export class Heavy extends Enemy {
   constructor(scene, x, y, wave = 1) {
     super(scene, x, y, scaleCfg(CONFIG.ENEMIES.HEAVY, wave));
+    this.isHeavy = true;
+    if (this.sprite.body) this.sprite.body.pushable = false;
   }
 
   update(time) {

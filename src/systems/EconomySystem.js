@@ -7,12 +7,16 @@ export class EconomySystem {
       stone: 5,
       food: 0,
       gold: 0,
+      maxFood: 20,   // starts at BASE_CAP; granaries increase this
     };
   }
 
   add(type, amount) {
     if (this.resources[type] !== undefined) {
       this.resources[type] += amount;
+      if (type === 'food') {
+        this.resources.food = Math.min(this.resources.food, this.resources.maxFood);
+      }
     }
   }
 

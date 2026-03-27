@@ -96,7 +96,7 @@ export class UpgradePanel {
   _refresh() {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
-    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '旅店', gathering: '採集所', repair: '維修工', barracks: '兵營', mage_tower: '法師塔', farm: '農田' };
+    const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '旅店', gathering: '採集所', repair: '維修工', barracks: '兵營', mage_tower: '法師塔', farm: '農田', granary: '糧倉', castle: '城堡' };
     const name = nameMap[b.type] || b.type;
     this.nameText.setText(name);
     this.hpText.setColor('#88FF88'); // reset color before farm override
@@ -151,12 +151,18 @@ export class UpgradePanel {
       this.deployBtn.setVisible(hasReady);
       this.deployBtnText.setVisible(hasReady);
       if (hasReady) this.deployBtnText.setText(`帶走 (${ready} 名)`);
+    } else if (b.type === 'granary') {
+      this.statsText.setText(`糧食上限 +${CONFIG.BUILDINGS.GRANARY.FOOD_CAP_BONUS}`);
+    } else if (b.type === 'castle') {
+      const soldiers = b.soldiers.filter(s => !s.dead).length;
+      const mages    = b.mages.filter(m => !m.dead).length;
+      this.statsText.setText(`士兵 ${soldiers}/1  法師 ${mages}/1\n射程 ${b.range}  傷害 ${b.damage}`);
     } else {
       this.statsText.setText('');
     }
 
     const nextLv = b.level + 1;
-    const typeKeyMap = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER' };
+    const typeKeyMap = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER', granary: 'GRANARY', castle: 'CASTLE' };
     const cfgTypeKey = typeKeyMap[b.type] || b.type.toUpperCase();
     const upgCfg = CONFIG.BUILDINGS[cfgTypeKey]?.UPGRADE?.[nextLv];
 
@@ -179,7 +185,7 @@ export class UpgradePanel {
     if (!this.currentBuilding) return;
     const b = this.currentBuilding;
     const nextLv = b.level + 1;
-    const typeKeyMap2 = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER' };
+    const typeKeyMap2 = { smith: 'BLACKSMITH', training: 'TRAINING_GROUND', cafeteria: 'CAFETERIA', gathering: 'GATHERING_POST', repair: 'REPAIR_WORKSHOP', barracks: 'BARRACKS', mage_tower: 'MAGE_TOWER', granary: 'GRANARY', castle: 'CASTLE' };
     const typeKey = typeKeyMap2[b.type] || b.type.toUpperCase();
     const upgCfg = CONFIG.BUILDINGS[typeKey]?.UPGRADE?.[nextLv];
     if (!upgCfg) return;
