@@ -35,9 +35,10 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
   },
 
   WAVES: {
-    PREP_TIME: 30,      // seconds before first wave
-    BETWEEN_TIME: 15,   // seconds between waves
-    SPAWN_MULT: 1.0,    // multiplies total enemy count per wave
+    PREP_TIME: 30,       // seconds before first wave
+    BETWEEN_TIME: 15,    // seconds between waves
+    SPAWN_MULT: 1.0,     // multiplies total enemy count per wave
+    WAVE_TIME_LIMIT: 90, // seconds; if wave isn't cleared, skip intermission and start next wave
   },
 
   EXCHANGE: {
