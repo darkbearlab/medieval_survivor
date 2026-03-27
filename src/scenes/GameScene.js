@@ -1144,6 +1144,28 @@ export class GameScene extends Phaser.Scene {
         this._weaponMounts.push(g1, g2);
         break;
       }
+      case 'speed_up':
+        this.player.speed += wu.AMOUNT;
+        break;
+      case 'defense_up':
+        this.player.defense += wu.AMOUNT;
+        break;
+      case 'attack_up':
+        this.player.attackBonus += wu.AMOUNT;
+        break;
+      case 'max_hp_up':
+        this.player.maxHp += wu.AMOUNT;
+        this.player.hp = Math.min(this.player.hp + wu.AMOUNT, this.player.maxHp);
+        EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
+        break;
+      case 'heal':
+        this.player.hp = Math.min(this.player.hp + wu.AMOUNT, this.player.maxHp);
+        EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
+        break;
+      case 'gold_bonus':
+        this.economy.add('gold', wu.AMOUNT);
+        EventBus.emit('resources_updated', this.economy.resources);
+        break;
     }
 
     // Brief on-screen confirmation

@@ -192,6 +192,14 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     chain_bolt: { name: '連鎖閃電', desc: '命中後彈射到最近的另一個敵人', icon: '🔗' },
     frost_bolt: { name: '冰霜箭',   desc: '命中使敵人減速 30%  持續 2 秒', icon: '❄' },
     guardian:   { name: '守護砲台', desc: '繞玩家旋轉的護衛砲台', icon: '🛡', DAMAGE: 12, RANGE: 180, RATE: 1400, TINT: 0x4488FF, ORBIT_RADIUS: 48, ORBIT_SPEED: 0.0025 },
+
+    // ── Stat upgrades ─────────────────────────────────────────────────────
+    speed_up:   { name: '疾風步法', desc: '移動速度 +15', icon: '💨', AMOUNT: 15 },
+    defense_up: { name: '鐵甲強化', desc: '防禦力 +3（減少等量直接傷害）', icon: '🛡', AMOUNT: 3 },
+    attack_up:  { name: '武器磨礪', desc: '基礎攻擊力 +6', icon: '⚔', AMOUNT: 6 },
+    max_hp_up:  { name: '生命強化', desc: '最大生命值 +30，並恢復 30 HP', icon: '❤', AMOUNT: 30 },
+    heal:       { name: '急速回血', desc: '立即恢復 50 HP（不超過上限）', icon: '✚', AMOUNT: 50 },
+    gold_bonus: { name: '財富加持', desc: '立即獲得 60 金幣', icon: '💰', AMOUNT: 60 },
   },
 
   SOLDIERS: {
