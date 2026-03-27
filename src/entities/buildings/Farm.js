@@ -20,7 +20,7 @@ export class Farm {
 
   collect(economy) {
     if (this.depleted) return;
-    economy.resources.food = (economy.resources.food || 0) + CONFIG.BUILDINGS.FARM.FOOD_YIELD;
+    economy.add('food', CONFIG.BUILDINGS.FARM.FOOD_YIELD);   // capped at maxFood by EconomySystem
     this.depleted  = true;
     this.regenTimer = 0;
     this.sprite.setAlpha(0.4);

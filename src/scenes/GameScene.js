@@ -141,8 +141,14 @@ export class GameScene extends Phaser.Scene {
       }
       // Left-click: place building or select
       if (this.buildingSystem.isPlacing()) {
-        const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-        this.buildingSystem.tryPlace(world.x, world.y);
+        const world  = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        const placed = this.buildingSystem.tryPlace(world.x, world.y);
+        if (placed && this._pendingFreeItem) {
+          // Free building placed — consume it and exit placement mode
+          this._pendingFreeItem = null;
+          this.buildingSystem.cancelPlacing();
+          EventBus.emit('build_cancelled');
+        }
       } else {
         // Try clicking on a building for upgrade panel
         const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
@@ -228,11 +234,32 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.mageProjectiles, this.soldiersGroup,    this._onMageProjHitBuilding, null, this);
     this.physics.add.overlap(this.mageProjectiles, this.alliedMagesGroup, this._onMageProjHitBuilding, null, this);
 
+    // --- Free building inventory (stash from chest/boss drops) ---
+    this._freeBuildingInventory = [];
+    this._pendingFreeItem       = null;
+
     // --- EventBus subscriptions ---
     this._onBuildSelect    = (type) => this.buildingSystem.startPlacing(type);
-    this._onBuildCancelled = ()     => this.buildingSystem.cancelPlacing();
-    EventBus.on('build_select',    this._onBuildSelect);
-    EventBus.on('build_cancelled', this._onBuildCancelled);
+    this._onBuildCancelled = () => {
+      this.buildingSystem.cancelPlacing();
+      // Restore any free item that was in mid-placement
+      if (this._pendingFreeItem) {
+        this._freeBuildingInventory.push(this._pendingFreeItem);
+        this._pendingFreeItem = null;
+        EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
+      }
+    };
+    this._onFreeBuildUse = (idx) => {
+      const item = this._freeBuildingInventory[idx];
+      if (!item) return;
+      this._freeBuildingInventory.splice(idx, 1);
+      this._pendingFreeItem = item;
+      EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
+      this.buildingSystem.startPlacing(item.type, true, item.upgradeLevel || 0);
+    };
+    EventBus.on('build_select',         this._onBuildSelect);
+    EventBus.on('build_cancelled',      this._onBuildCancelled);
+    EventBus.on('free_build_use',       this._onFreeBuildUse);
 
     // --- Attack timing ---
     this.nextAttackTime = 0;
@@ -1229,10 +1256,20 @@ export class GameScene extends Phaser.Scene {
         EventBus.emit('resources_updated', this.economy.resources);
         break;
       case 'free_tower_lv2':
-        this.buildingSystem.startPlacing('tower', true, 2);
+        this._freeBuildingInventory.push({
+          type: 'tower', upgradeLevel: 2,
+          name: '★ 精英箭塔', desc: '升級版箭塔（免費放置）',
+          texKey: 'building_tower', icon: '★',
+        });
+        EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
         break;
       case 'free_castle':
-        this.buildingSystem.startPlacing('castle', true, 0);
+        this._freeBuildingInventory.push({
+          type: 'castle', upgradeLevel: 0,
+          name: '🏰 城堡', desc: '射箭＋生兵＋召法師（免費放置）',
+          texKey: 'building_castle', icon: '🏰',
+        });
+        EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
         break;
     }
 
@@ -1318,6 +1355,7 @@ export class GameScene extends Phaser.Scene {
   shutdown() {
     EventBus.off('build_select',    this._onBuildSelect);
     EventBus.off('build_cancelled', this._onBuildCancelled);
+    EventBus.off('free_build_use',  this._onFreeBuildUse);
     if (this.dayNightSystem) this.dayNightSystem.destroy();
     EventBus.removeAllListeners();
   }

@@ -34,6 +34,7 @@ export class BuildMenu {
     this._allElements  = [];
     this._slotBgs      = [];
     this._resTexts     = {};
+    this._freeTray     = [];   // dynamic free-building inventory slots
     this._build();
     this._subscribe();
   }
@@ -144,10 +145,69 @@ export class BuildMenu {
   }
 
   _subscribe() {
-    this._onCancelled = () => this._clearSelection();
-    this._onResources = (r) => this._updateResources(r);
-    EventBus.on('build_cancelled',   this._onCancelled);
-    EventBus.on('resources_updated', this._onResources);
+    this._onCancelled      = () => this._clearSelection();
+    this._onResources      = (r) => this._updateResources(r);
+    this._onFreeBuildings  = (inv) => this._refreshFreeTray(inv);
+    EventBus.on('build_cancelled',      this._onCancelled);
+    EventBus.on('resources_updated',    this._onResources);
+    EventBus.on('free_buildings_updated', this._onFreeBuildings);
+  }
+
+  // ── Free building inventory tray ──────────────────────────────────────────
+
+  _refreshFreeTray(inventory) {
+    // Destroy old tray slots
+    this._freeTray.forEach(({ bg, icon, badge }) => {
+      bg.destroy();
+      if (icon) icon.destroy();
+      badge.destroy();
+    });
+    this._freeTray = [];
+    if (!inventory || inventory.length === 0) return;
+
+    const s = this.scene;
+    const { WIDTH: W, HEIGHT: H } = CONFIG;
+    const N     = DEFS.length;
+    const totalW = N * SZ + (N - 1) * GAP;
+    const left   = Math.round((W - totalW) / 2);
+    const slotY  = H - 32;
+    // Start tray 14px to the right of the last regular slot
+    const trayStartX = left + N * (SZ + GAP) + 14;
+
+    inventory.forEach((item, i) => {
+      const cx = trayStartX + i * (SZ + GAP) + SZ / 2;
+
+      const bg = s.add.rectangle(cx, slotY, SZ, SZ, 0x1a1500)
+        .setDepth(91).setScrollFactor(0)
+        .setStrokeStyle(2, 0xFFCC00)
+        .setInteractive({ useHandCursor: true });
+
+      let icon = null;
+      if (item.texKey && s.textures.exists(item.texKey)) {
+        icon = s.add.image(cx, slotY - 2, item.texKey)
+          .setDisplaySize(34, 34).setDepth(92).setScrollFactor(0);
+      }
+
+      const badge = s.add.text(cx, slotY + SZ / 2 - 10, '免費', {
+        fontSize: '10px', color: '#FFCC00',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(93).setScrollFactor(0);
+
+      bg.on('pointerover', () => {
+        bg.setFillStyle(0x2a2200);
+        this._showTooltip(cx, slotY - SZ / 2 - 6, item.name, item.desc || '', '免費放置');
+      });
+      bg.on('pointerout', () => {
+        bg.setFillStyle(0x1a1500);
+        this._hideTooltip();
+      });
+      bg.on('pointerdown', () => {
+        this._clearSelection();
+        EventBus.emit('free_build_use', i);
+      });
+
+      this._freeTray.push({ bg, icon, badge });
+    });
   }
 
   // ── slot selection ────────────────────────────────────────────────────────
