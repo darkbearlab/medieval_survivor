@@ -104,7 +104,12 @@ export class Boss extends Enemy {
       if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
       if (time - this.lastAttack > this.attackRate) {
         this.lastAttack = time;
-        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, this.damage);
+        // Archer boss also deals reduced damage to buildings
+        const isUnit = target === this.scene.player || target === tc
+                    || target.type === 'soldier'    || target.type === 'allied_mage';
+        const dmg = isUnit ? this.damage
+                           : Math.round(this.damage * (CONFIG.ENEMIES.ARCHER.BUILDING_DAMAGE / CONFIG.ENEMIES.ARCHER.DAMAGE));
+        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, dmg);
       }
     } else {
       this._followPath(time, target.x, target.y);

@@ -203,7 +203,8 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
   },
 
   SOLDIERS: {
-    LEASH_RANGE: 200,   // max distance from barracks before retreating
+    LEASH_RANGE:  200,   // max distance from player when deployed/rally mode
+    DETECT_RANGE: 320,   // distance from barracks to scan for enemies
     SPAWN_RATE: 8000,   // ms between soldier spawns
     LEVEL: {
       1: { MAX: 2, TYPE: 'melee' },
@@ -219,7 +220,8 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
   },
 
   ALLIED_MAGES: {
-    LEASH_RANGE: 200,
+    LEASH_RANGE:  200,   // max distance from player when deployed/rally mode
+    DETECT_RANGE: 300,   // distance from MageTower to scan for enemies
     SPAWN_RATE: 12000,   // slower than soldiers — mages are powerful
     LEVEL: {
       1: { MAX: 1 },

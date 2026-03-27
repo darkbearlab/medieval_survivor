@@ -71,7 +71,11 @@ export class Archer extends Enemy {
       if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
       if (time - this.lastAttack > this.attackRate) {
         this.lastAttack = time;
-        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, this.damage);
+        // Arrows deal reduced damage to buildings; full damage to units and TC
+        const isUnit = target === player || target === tc
+                    || target.type === 'soldier' || target.type === 'allied_mage';
+        const dmg = isUnit ? this.damage : cfg.BUILDING_DAMAGE;
+        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, dmg);
       }
     } else {
       this._followPath(time, target.x, target.y);

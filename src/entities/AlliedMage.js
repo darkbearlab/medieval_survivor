@@ -3,7 +3,15 @@ import { CONFIG } from '../config.js';
 /**
  * AlliedMage — friendly mage spawned by MageTower.
  * Fires AoE projectiles that only damage enemies (no friendly fire).
- * Backs away if enemies get within KEEP_MIN. Leashes to tower (or player in rally mode).
+ * Backs away if enemies get within KEEP_MIN.
+ *
+ * Building-anchored mode (default):
+ *   Scans for enemies within DETECT_RANGE of the MageTower.
+ *   If found → pursues & attacks the nearest enemy to itself.
+ *   If none  → returns to tower via direct path.
+ *
+ * Deployed / rally mode:
+ *   Follows player; leashes back if > LEASH_RANGE away.
  */
 export class AlliedMage {
   constructor(scene, x, y, tower) {
@@ -32,41 +40,54 @@ export class AlliedMage {
   update(time) {
     if (this.dead || !this.sprite.active) return;
 
-    const player    = this.scene.player;
-    const rallyMode = this.scene.soldierRallyMode && player && !player.isDead;
+    const player       = this.scene.player;
+    const rallyMode    = this.scene.soldierRallyMode && player && !player.isDead;
     const followPlayer = this.deployed || rallyMode;
-    const leashX    = (followPlayer && player) ? player.x : this.tower.x;
-    const leashY    = (followPlayer && player) ? player.y : this.tower.y;
-    const idleRange = followPlayer ? 60 : 40;
 
-    const leashDist = Phaser.Math.Distance.Between(
-      this.sprite.x, this.sprite.y, leashX, leashY
-    );
-
-    // Return to leash point if too far
-    if (leashDist > CONFIG.ALLIED_MAGES.LEASH_RANGE) {
-      this._moveDirectTo(leashX, leashY);
-      this._drawHpBar();
-      return;
-    }
-
-    const target = this._findNearestEnemy(CONFIG.ALLIED_MAGES.LEASH_RANGE * 1.5);
-
-    if (!target) {
-      if (leashDist > idleRange) {
-        this._moveDirectTo(leashX, leashY);
-      } else {
-        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+    if (followPlayer) {
+      // ── Deployed / rally: leash to player ────────────────────────────────
+      const leashDist = Phaser.Math.Distance.Between(
+        this.sprite.x, this.sprite.y, player.x, player.y
+      );
+      if (leashDist > CONFIG.ALLIED_MAGES.LEASH_RANGE) {
+        this._moveDirectTo(player.x, player.y);
+        this._drawHpBar();
+        return;
       }
-      this._drawHpBar();
-      return;
+      const target = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, CONFIG.ALLIED_MAGES.LEASH_RANGE * 1.5);
+      if (!target) {
+        if (leashDist > 60) this._moveDirectTo(player.x, player.y);
+        else if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+        this._drawHpBar();
+        return;
+      }
+      this._doAttack(time, target);
+    } else {
+      // ── Building-anchored: detect from tower position ─────────────────────
+      const tx = this.tower.x, ty = this.tower.y;
+      const target = this._findNearestEnemyFromPos(tx, ty, CONFIG.ALLIED_MAGES.DETECT_RANGE);
+
+      if (!target) {
+        // No enemy in range — return home
+        const homeDist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, tx, ty);
+        if (homeDist > 40) this._moveDirectTo(tx, ty);
+        else if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+        this._drawHpBar();
+        return;
+      }
+      // Enemy detected from tower → pursue nearest enemy to self
+      const chase = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, Infinity);
+      this._doAttack(time, chase || target);
     }
 
+    this._drawHpBar();
+  }
+
+  _doAttack(time, target) {
     const cfg  = CONFIG.ALLIED_MAGES;
     const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, target.x, target.y);
 
     if (dist < cfg.KEEP_MIN) {
-      // Back away from enemy
       const angle = Phaser.Math.Angle.Between(target.x, target.y, this.sprite.x, this.sprite.y);
       if (this.sprite.body) this.sprite.body.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
       this.sprite.setFlipX(Math.cos(angle) < 0);
@@ -79,17 +100,15 @@ export class AlliedMage {
     } else {
       this._moveDirectTo(target.x, target.y);
     }
-
-    this._drawHpBar();
   }
 
-  _findNearestEnemy(maxRange) {
+  _findNearestEnemyFromPos(fromX, fromY, maxRange) {
     let nearest = null, nearestDist = maxRange;
     this.scene.enemies.getChildren().forEach(sprite => {
       if (!sprite.active) return;
       const entity = sprite.getData('entity');
       if (!entity || entity.dead) return;
-      const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, sprite.x, sprite.y);
+      const d = Phaser.Math.Distance.Between(fromX, fromY, sprite.x, sprite.y);
       if (d < nearestDist) { nearestDist = d; nearest = sprite; }
     });
     return nearest;

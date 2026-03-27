@@ -78,7 +78,12 @@ export class Elite extends Enemy {
       if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
       if (time - this.lastAttack > this.attackRate) {
         this.lastAttack = time;
-        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, this.damage);
+        // Archer elite: reduced damage to buildings, full damage to units
+        const isUnit = this.scene.player && target === this.scene.player
+                    || target.type === 'soldier' || target.type === 'allied_mage';
+        const ratio  = CONFIG.ENEMIES.ARCHER.BUILDING_DAMAGE / CONFIG.ENEMIES.ARCHER.DAMAGE;
+        const dmg    = isUnit ? this.damage : Math.round(this.damage * ratio);
+        this.scene._fireEnemyProjectile(this.sprite.x, this.sprite.y, target, dmg);
       }
     } else {
       this._followPath(time, target.x, target.y);

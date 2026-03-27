@@ -2,9 +2,16 @@ import { CONFIG } from '../config.js';
 
 /**
  * Soldier — friendly unit spawned by Barracks.
- * combatType 'melee' : Bandit-like melee, targets nearest enemy.
- * combatType 'ranged': Archer-like ranged, backs away if enemy too close.
- * Leashes back to barracks if distance > CONFIG.SOLDIERS.LEASH_RANGE.
+ * combatType 'melee' : melee, targets nearest enemy.
+ * combatType 'ranged': ranged, backs away if enemy too close.
+ *
+ * Building-anchored mode (default):
+ *   Scans for enemies within DETECT_RANGE of the barracks.
+ *   If found → pursues & attacks the nearest enemy to itself.
+ *   If none  → returns to barracks via direct path.
+ *
+ * Deployed / rally mode:
+ *   Follows player; leashes back if > LEASH_RANGE away.
  */
 export class Soldier {
   constructor(scene, x, y, combatType, barracks) {
@@ -35,44 +42,55 @@ export class Soldier {
   update(time) {
     if (this.dead || !this.sprite.active) return;
 
-    // Determine leash point: player (rally mode) or barracks (default)
-    const player    = this.scene.player;
-    const rallyMode = this.scene.soldierRallyMode && player && !player.isDead;
+    const player       = this.scene.player;
+    const rallyMode    = this.scene.soldierRallyMode && player && !player.isDead;
     const followPlayer = this.deployed || rallyMode;
-    const leashX    = (followPlayer && player) ? player.x : this.barracks.x;
-    const leashY    = (followPlayer && player) ? player.y : this.barracks.y;
-    const idleRange = followPlayer ? 60 : 40;
 
-    const leashDist = Phaser.Math.Distance.Between(
-      this.sprite.x, this.sprite.y, leashX, leashY
-    );
-
-    // Return to leash point if too far
-    if (leashDist > CONFIG.SOLDIERS.LEASH_RANGE) {
-      this._moveDirectTo(leashX, leashY);
-      this._drawHpBar();
-      return;
-    }
-
-    const target = this._findNearestEnemy(CONFIG.SOLDIERS.LEASH_RANGE * 1.5);
-
-    // No nearby enemy — maintain position near leash point
-    if (!target) {
-      if (leashDist > idleRange) {
-        this._moveDirectTo(leashX, leashY);
-      } else {
-        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+    if (followPlayer) {
+      // ── Deployed / rally: leash to player ────────────────────────────────
+      const leashDist = Phaser.Math.Distance.Between(
+        this.sprite.x, this.sprite.y, player.x, player.y
+      );
+      if (leashDist > CONFIG.SOLDIERS.LEASH_RANGE) {
+        this._moveDirectTo(player.x, player.y);
+        this._drawHpBar();
+        return;
       }
-      this._drawHpBar();
-      return;
+      const target = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, CONFIG.SOLDIERS.LEASH_RANGE * 1.5);
+      if (!target) {
+        if (leashDist > 60) this._moveDirectTo(player.x, player.y);
+        else if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+        this._drawHpBar();
+        return;
+      }
+      this._doAttack(time, target);
+    } else {
+      // ── Building-anchored: detect from barracks position ─────────────────
+      const bx = this.barracks.x, by = this.barracks.y;
+      const target = this._findNearestEnemyFromPos(bx, by, CONFIG.SOLDIERS.DETECT_RANGE);
+
+      if (!target) {
+        // No enemy in range — return home
+        const homeDist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, bx, by);
+        if (homeDist > 40) this._moveDirectTo(bx, by);
+        else if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+        this._drawHpBar();
+        return;
+      }
+      // Enemy detected from barracks → pursue and attack nearest enemy to self
+      const chase = this._findNearestEnemyFromPos(this.sprite.x, this.sprite.y, Infinity);
+      this._doAttack(time, chase || target);
     }
 
+    this._drawHpBar();
+  }
+
+  _doAttack(time, target) {
     const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, target.x, target.y);
 
     if (this.combatType === 'ranged') {
       const cfg = CONFIG.SOLDIERS.RANGED;
       if (dist < cfg.KEEP_MIN) {
-        // Back away from enemy
         const angle = Phaser.Math.Angle.Between(target.x, target.y, this.sprite.x, this.sprite.y);
         if (this.sprite.body) this.sprite.body.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
         this.sprite.setFlipX(Math.cos(angle) < 0);
@@ -86,7 +104,6 @@ export class Soldier {
         this._moveDirectTo(target.x, target.y);
       }
     } else {
-      // Melee — short-range projectile
       const meleeCfg = CONFIG.SOLDIERS.MELEE;
       if (dist < meleeCfg.RANGE) {
         if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
@@ -98,17 +115,15 @@ export class Soldier {
         this._moveDirectTo(target.x, target.y);
       }
     }
-
-    this._drawHpBar();
   }
 
-  _findNearestEnemy(maxRange) {
+  _findNearestEnemyFromPos(fromX, fromY, maxRange) {
     let nearest = null, nearestDist = maxRange;
     this.scene.enemies.getChildren().forEach(sprite => {
       if (!sprite.active) return;
       const entity = sprite.getData('entity');
       if (!entity || entity.dead) return;
-      const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, sprite.x, sprite.y);
+      const d = Phaser.Math.Distance.Between(fromX, fromY, sprite.x, sprite.y);
       if (d < nearestDist) { nearestDist = d; nearest = sprite; }
     });
     return nearest;
