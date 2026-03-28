@@ -218,26 +218,39 @@ export class WaveSystem {
     let data;
     try {
       const raw = localStorage.getItem('medieval_survivor_offensives');
-      if (!raw) return;
+      if (!raw) {
+        console.log('[CustomOffensive] 無資料（localStorage 為空，請先在編輯器按「套用至遊戲」）');
+        return;
+      }
       data = JSON.parse(raw);
-    } catch(e) { return; }
+    } catch(e) {
+      console.warn('[CustomOffensive] 解析 localStorage 失敗:', e);
+      return;
+    }
 
     const offensives = data.offensives || [];
+    console.log(`[CustomOffensive] 第 ${waveNum} 波，共 ${offensives.length} 個攻勢設定`);
+
     for (const cfg of offensives) {
-      if (!cfg.enabled) continue;
+      if (!cfg.enabled) {
+        console.log(`  ↳ 「${cfg.name}」已停用，跳過`);
+        continue;
+      }
       const day    = cfg.triggerDay    || 1;
       const timing = cfg.triggerTiming || 'night';
-      let matches = false;
+      let target, matches = false;
       if (timing === 'any') {
         const first = (day - 1) * 3 + 1;
         matches = waveNum >= first && waveNum <= day * 3;
+        target  = `第${day}天任意波 (${first}–${day*3})`;
       } else {
-        let target;
-        if (timing === 'wave1') target = (day - 1) * 3 + 1;
+        if (timing === 'wave1')      target = (day - 1) * 3 + 1;
         else if (timing === 'wave2') target = (day - 1) * 3 + 2;
-        else target = day * 3;  // night
+        else                         target = day * 3;
         matches = waveNum === target;
+        target  = `第${day}天${timing} → 第${target}波`;
       }
+      console.log(`  ↳ 「${cfg.name}」觸發條件：${target}，目前波：${waveNum}，${matches ? '✓ 觸發！' : '✗ 不符'}`);
       if (matches) this._triggerCustomOffensive(cfg, waveNum);
     }
   }

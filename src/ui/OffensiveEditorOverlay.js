@@ -241,7 +241,7 @@ class OffensiveEditorOverlay {
     this._fromGame   = false;
     this._offensives = [];
     this._editingId  = null;
-    this._escHandler = null;
+    this._keyBlocker = null;
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -301,17 +301,20 @@ class OffensiveEditorOverlay {
       if (e.target === this._el) this.hide();
     });
 
-    // Escape key
-    this._escHandler = (e) => {
+    // Block ALL keyboard events from reaching Phaser while overlay is visible.
+    // Use capture phase (true) so we intercept before Phaser's document listeners.
+    this._keyBlocker = (e) => {
       if (!this._visible) return;
       if (e.key === 'Escape') {
         const modal = this._el.querySelector('#oeo-modal-bg');
         if (modal && modal.style.display !== 'none') this._closeModal();
         else this.hide();
-        e.stopPropagation();
       }
+      // Stop every key event from propagating to Phaser
+      e.stopImmediatePropagation();
     };
-    document.addEventListener('keydown', this._escHandler, true);
+    document.addEventListener('keydown', this._keyBlocker, true);
+    document.addEventListener('keyup',   this._keyBlocker, true);
 
     this._wireEvents();
   }

@@ -267,8 +267,14 @@ export class GameScene extends Phaser.Scene {
       this.buildingSystem.startPlacing(item.type, true, item.upgradeLevel || 0);
     };
     this._onUnitBuffsDirty = () => this._recalcUnitBonuses();
-    this._onEditorOpened   = () => { if (!this.isPaused) { this.physics.pause(); this.isPaused = true; this._editorPaused = true; } };
-    this._onEditorClosed   = () => { if (this._editorPaused) { this.physics.resume(); this.isPaused = false; this._editorPaused = false; } };
+    this._onEditorOpened   = () => {
+      if (!this.isPaused) { this.physics.pause(); this.isPaused = true; this._editorPaused = true; }
+      if (this.input?.keyboard) this.input.keyboard.enabled = false;
+    };
+    this._onEditorClosed   = () => {
+      if (this._editorPaused) { this.physics.resume(); this.isPaused = false; this._editorPaused = false; }
+      if (this.input?.keyboard) this.input.keyboard.enabled = true;
+    };
     EventBus.on('build_select',              this._onBuildSelect);
     EventBus.on('build_cancelled',           this._onBuildCancelled);
     EventBus.on('free_build_use',            this._onFreeBuildUse);
