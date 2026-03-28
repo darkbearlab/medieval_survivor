@@ -6,21 +6,24 @@ export class UpgradePanel {
     this.scene = scene;
     this.visible = false;
     this.currentBuilding = null;
+    this._deleteArmed = false;   // two-click delete confirmation state
     this._build();
     this._subscribe();
   }
 
   _subscribe() {
-    this._onClicked = (b) => this.showFor(b);
-    EventBus.on('building_clicked', this._onClicked);
+    this._onClicked      = (b) => this.showFor(b);
+    this._onClosePanel   = () => { if (this.visible) this.hide(); };
+    EventBus.on('building_clicked',    this._onClicked);
+    EventBus.on('close_upgrade_panel', this._onClosePanel);
   }
 
   _build() {
     const { WIDTH: W } = CONFIG;
     const panelW = 190;
-    const panelH = 250;
+    const panelH = 306;   // extended from 250 to fit delete button
     const cx = W - 20 - panelW / 2;
-    const cy = 130 + panelH / 2;
+    const cy = 130 + panelH / 2;   // top of panel stays at y=130
 
     this.bg = this.scene.add.rectangle(cx, cy, panelW, panelH, 0x0d0d0d, 0.92)
       .setDepth(100).setStrokeStyle(2, 0x888888).setScrollFactor(0).setVisible(false);
@@ -45,53 +48,115 @@ export class UpgradePanel {
       fontSize: '12px', color: '#CCCC88',
     }).setOrigin(0.5).setDepth(101).setScrollFactor(0).setVisible(false);
 
-    this.deployBtn = this.scene.add.rectangle(cx, cy + panelH / 2 - 84, 150, 32, 0x1a3a6a)
+    // ── Deploy button (barracks / mage_tower only) ────────────────────────────
+    this.deployBtn = this.scene.add.rectangle(cx, cy + panelH / 2 - 140, 150, 32, 0x1a3a6a)
       .setDepth(101).setStrokeStyle(1, 0x4488CC)
       .setScrollFactor(0).setInteractive({ useHandCursor: true }).setVisible(false);
-    this.deployBtnText = this.scene.add.text(cx, cy + panelH / 2 - 84, '帶走', {
+    this.deployBtnText = this.scene.add.text(cx, cy + panelH / 2 - 140, '帶走', {
       fontSize: '14px', color: '#88CCFF',
     }).setOrigin(0.5).setDepth(102).setScrollFactor(0).setVisible(false);
 
-    this.upgradeBtn = this.scene.add.rectangle(cx, cy + panelH / 2 - 42, 150, 36, 0x2a5f2a)
+    // ── Upgrade button ────────────────────────────────────────────────────────
+    this.upgradeBtn = this.scene.add.rectangle(cx, cy + panelH / 2 - 98, 150, 36, 0x2a5f2a)
       .setDepth(101).setStrokeStyle(1, 0x44AA44)
       .setScrollFactor(0).setInteractive({ useHandCursor: true }).setVisible(false);
-    this.upgradeBtnText = this.scene.add.text(cx, cy + panelH / 2 - 42, '升 級', {
+    this.upgradeBtnText = this.scene.add.text(cx, cy + panelH / 2 - 98, '升 級', {
       fontSize: '15px', color: '#FFFFFF',
     }).setOrigin(0.5).setDepth(102).setScrollFactor(0).setVisible(false);
 
+    // ── Delete button ─────────────────────────────────────────────────────────
+    this.deleteBtn = this.scene.add.rectangle(cx, cy + panelH / 2 - 36, 150, 30, 0x4a0a0a)
+      .setDepth(101).setStrokeStyle(1, 0x882222)
+      .setScrollFactor(0).setInteractive({ useHandCursor: true }).setVisible(false);
+    this.deleteBtnText = this.scene.add.text(cx, cy + panelH / 2 - 36, '🗑 拆除建築', {
+      fontSize: '13px', color: '#FF6666',
+    }).setOrigin(0.5).setDepth(102).setScrollFactor(0).setVisible(false);
+
+    // ── Close button (×) ─────────────────────────────────────────────────────
     this.closeBtn = this.scene.add.text(cx + panelW / 2 - 14, cy - panelH / 2 + 14, '\u2715', {
       fontSize: '16px', color: '#FF4444',
     }).setOrigin(0.5).setDepth(102).setScrollFactor(0).setInteractive({ useHandCursor: true }).setVisible(false);
 
+    // ── Button events ─────────────────────────────────────────────────────────
     this.closeBtn.on('pointerdown', () => this.hide());
+
     this.deployBtn.on('pointerover', () => this.deployBtn.setFillStyle(0x224488));
     this.deployBtn.on('pointerout',  () => this.deployBtn.setFillStyle(0x1a3a6a));
     this.deployBtn.on('pointerdown', () => this._doDeployAll());
+
     this.upgradeBtn.on('pointerover', () => this.upgradeBtn.setFillStyle(0x3a7f3a));
-    this.upgradeBtn.on('pointerout', () => this.upgradeBtn.setFillStyle(0x2a5f2a));
+    this.upgradeBtn.on('pointerout',  () => this.upgradeBtn.setFillStyle(0x2a5f2a));
     this.upgradeBtn.on('pointerdown', () => this._doUpgrade());
+
+    this.deleteBtn.on('pointerover', () => this.deleteBtn.setFillStyle(0x6a1010));
+    this.deleteBtn.on('pointerout',  () => this.deleteBtn.setFillStyle(this._deleteArmed ? 0x8a1010 : 0x4a0a0a));
+    this.deleteBtn.on('pointerdown', () => this._handleDeleteClick());
 
     this._allEls = [
       this.bg, this.nameText, this.levelText, this.hpText, this.statsText,
-      this.costText, this.deployBtn, this.deployBtnText, this.upgradeBtn, this.upgradeBtnText, this.closeBtn,
+      this.costText,
+      this.deployBtn, this.deployBtnText,
+      this.upgradeBtn, this.upgradeBtnText,
+      this.deleteBtn, this.deleteBtnText,
+      this.closeBtn,
     ];
   }
 
   showFor(building) {
     this.currentBuilding = building;
     this.visible = true;
+    this._deleteArmed = false;
     this._allEls.forEach(e => e.setVisible(true));
-    // Always pre-hide conditional buttons; _refresh() re-shows them only when appropriate
+    // Pre-hide conditional buttons; _refresh() re-shows as needed
     this.deployBtn.setVisible(false);
     this.deployBtnText.setVisible(false);
+    this._resetDeleteBtn();
     this._refresh();
   }
 
   hide() {
     this.visible = false;
     this.currentBuilding = null;
+    this._deleteArmed = false;
     this._allEls.forEach(e => e.setVisible(false));
   }
+
+  // ── Delete with two-click confirmation ─────────────────────────────────────
+
+  _handleDeleteClick() {
+    if (!this._deleteArmed) {
+      // First click: arm the button
+      this._deleteArmed = true;
+      this.deleteBtnText.setText('確認拆除？');
+      this.deleteBtn.setFillStyle(0x8a1010).setStrokeStyle(2, 0xFF4444);
+      // Auto-disarm after 2.5 s
+      if (this._disarmTimer) this._disarmTimer.remove();
+      this._disarmTimer = this.scene.time.delayedCall(2500, () => {
+        this._deleteArmed = false;
+        if (this.deleteBtnText.active) this._resetDeleteBtn();
+        this._disarmTimer = null;
+      });
+    } else {
+      // Second click: confirm
+      if (this._disarmTimer) { this._disarmTimer.remove(); this._disarmTimer = null; }
+      this._doDelete();
+    }
+  }
+
+  _resetDeleteBtn() {
+    this._deleteArmed = false;
+    this.deleteBtnText.setText('🗑 拆除建築');
+    this.deleteBtn.setFillStyle(0x4a0a0a).setStrokeStyle(1, 0x882222);
+  }
+
+  _doDelete() {
+    const b = this.currentBuilding;
+    if (!b || b.dead) { this.hide(); return; }
+    b._destroy();
+    this.hide();
+  }
+
+  // ── Refresh panel content ──────────────────────────────────────────────────
 
   _refresh() {
     if (!this.currentBuilding) return;
@@ -99,7 +164,7 @@ export class UpgradePanel {
     const nameMap = { wall: '城牆', tower: '箭塔', smith: '鐵匠鋪', training: '訓練場', cafeteria: '旅店', gathering: '採集所', repair: '維修工', barracks: '兵營', mage_tower: '法師塔', farm: '農田', granary: '糧倉', castle: '城堡' };
     const name = nameMap[b.type] || b.type;
     this.nameText.setText(name);
-    this.hpText.setColor('#88FF88'); // reset color before farm override
+    this.hpText.setColor('#88FF88');
 
     if (b.type === 'farm') {
       this.levelText.setText('無法升級');
@@ -117,7 +182,6 @@ export class UpgradePanel {
     this.levelText.setText(`等級 ${b.level}`);
     this.hpText.setText(`HP: ${Math.ceil(b.hp)} / ${b.maxHp}`);
 
-    // Hide deploy button by default; barracks/mage_tower branches re-show it if applicable
     this.deployBtn.setVisible(false);
     this.deployBtnText.setVisible(false);
 
@@ -213,7 +277,8 @@ export class UpgradePanel {
   }
 
   destroy() {
-    EventBus.off('building_clicked', this._onClicked);
+    EventBus.off('building_clicked',    this._onClicked);
+    EventBus.off('close_upgrade_panel', this._onClosePanel);
     this._allEls.forEach(e => e.destroy());
   }
 }

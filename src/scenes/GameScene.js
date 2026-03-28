@@ -139,6 +139,7 @@ export class GameScene extends Phaser.Scene {
       if (this.isGameOver || this.isPaused) return;
       // Right-click cancels placement (or deselects hotbar)
       if (pointer.rightButtonDown()) {
+        EventBus.emit('close_upgrade_panel');
         if (this.buildingSystem.isPlacing()) {
           this.buildingSystem.cancelPlacing();
           EventBus.emit('build_cancelled');
