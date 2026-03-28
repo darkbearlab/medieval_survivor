@@ -7,6 +7,8 @@ export class Player {
     this.characterKey = characterKey;
 
     const charCfg = CONFIG.CHARACTERS[characterKey] || CONFIG.CHARACTERS.ranger;
+    const weapKey  = charCfg.STARTING_WEAPON || 'hunter_bow';
+    const weapCfg  = CONFIG.WEAPONS[weapKey]  || CONFIG.WEAPONS.hunter_bow;
 
     this.sprite = scene.physics.add.sprite(x, y, charCfg.TEXTURE || 'player');
     this.sprite.setCollideWorldBounds(true);
@@ -18,17 +20,20 @@ export class Player {
     this.isDead      = false;
 
     // Flat bonuses (added by buildings at runtime)
-    this.defense     = 0;        // flat damage subtraction (blacksmith)
-    this.attackBonus = 0;        // flat damage addition (training ground)
+    this.defense     = 0;   // flat damage subtraction (blacksmith)
+    this.attackBonus = 0;   // flat damage addition (training ground)
 
-    // Character-specific stats
-    this.defensePct  = charCfg.DEFENSE_PCT || 0;   // % reduction (warrior passive)
-    this.damageMult  = charCfg.DAMAGE_MULT || 1.0;
+    // Character-specific stats (survivability — stays on character)
+    this.defensePct  = charCfg.DEFENSE_PCT || 0;
     this.speed       = charCfg.SPEED;
-    this.attackRange = charCfg.ATTACK_RANGE;
-    this.attackRate  = charCfg.ATTACK_RATE;
-    this.aoeOnHit    = charCfg.AOE   || false;
-    this.aoeRadius   = charCfg.AOE_RADIUS || 0;
+
+    // Weapon-derived stats (attack style — comes from the equipped weapon)
+    this.weaponKey   = weapKey;
+    this.damageMult  = weapCfg.DAMAGE_MULT || 1.0;
+    this.attackRange = weapCfg.RANGE;
+    this.attackRate  = weapCfg.RATE;
+    this.aoeOnHit    = weapCfg.AOE        || false;
+    this.aoeRadius   = weapCfg.AOE_RADIUS || 0;
   }
 
   update(cursors) {

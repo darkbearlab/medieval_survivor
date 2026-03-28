@@ -73,6 +73,7 @@ export class GameScene extends Phaser.Scene {
     this.townCenter    = new TownCenter(this, TOWN_CENTER.X, TOWN_CENTER.Y);
     this.resourceNodes = this._createResourceNodes();
     this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120, this.characterKey);
+    this._applyStartingBonus();
 
     // --- Terrain (impassable rocks) ---
     // Disabled: terrain caused enemies to get stuck. Class/method preserved for future use.
@@ -492,6 +493,8 @@ export class GameScene extends Phaser.Scene {
       if (this.player._explosiveShots) this._triggerMountExplosion(px, py, Math.round(dmg * 0.5), this.player._explosiveShots);
       if (this.player._chainBolt && entity && !entity.dead) this._chainBoltHit(entity, dmg, this.player._chainBolt);
       if (this.player._frostBolt && entity && !entity.dead) this._applyFrost(entity, this.player._frostBolt);
+      if (this.player.weaponKey === 'royal_scepter' && entity && !entity.dead && Math.random() < 0.20)
+        this._applyFrost(entity, 1);
     }
   }
 
@@ -684,6 +687,8 @@ export class GameScene extends Phaser.Scene {
       proj.setTint(tint);
     } else if (fromPlayer && this.player && this.player.aoeOnHit) {
       proj.setTint(0xCC44FF);   // mage — purple
+    } else if (fromPlayer && this.player && this.player.weaponKey === 'royal_scepter') {
+      proj.setTint(0xFF88CC);   // princess — pink
     } else if (fromPlayer && this.player && this.player.defensePct > 0) {
       proj.setTint(0xFF6633);   // warrior — red
     }
@@ -1246,10 +1251,67 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch('UpgradeChoiceScene', { upgrades: picks });
   }
 
+  // Applies the STARTING_BONUS defined in the character's config.
+  // Called once at game start, after player and economy are created.
+  _applyStartingBonus() {
+    const charCfg = CONFIG.CHARACTERS[this.characterKey] || {};
+    const bonus   = charCfg.STARTING_BONUS || {};
+
+    // ── Resources ────────────────────────────────────────────────────────────
+    if (bonus.gold)  this.economy.resources.gold  += bonus.gold;
+    if (bonus.wood)  this.economy.resources.wood  += bonus.wood;
+    if (bonus.stone) this.economy.resources.stone += bonus.stone;
+    if (bonus.food) {
+      this.economy.resources.food = Math.min(
+        this.economy.resources.food + bonus.food,
+        this.economy.maxFood
+      );
+    }
+    if (bonus.gold || bonus.wood || bonus.stone || bonus.food) {
+      EventBus.emit('resources_updated', this.economy.resources);
+    }
+
+    // ── Free buildings (e.g. { freeBuildings: ['castle', 'tower'] }) ─────────
+    if (Array.isArray(bonus.freeBuildings)) {
+      for (const bType of bonus.freeBuildings) {
+        this.buildingSystem.addFreeBuilding(bType);
+      }
+      EventBus.emit('free_buildings_updated', this.buildingSystem.getFreeBuildings());
+    }
+
+    // ── Pre-applied upgrades (e.g. { upgrades: ['dual_shot'] }) ─────────────
+    // Uses _applyUpgradeEffect directly to skip UpgradeChoiceScene teardown.
+    if (Array.isArray(bonus.upgrades)) {
+      for (const upKey of bonus.upgrades) {
+        this._applyUpgradeEffect(upKey);
+      }
+    }
+  }
+
   _applyUpgrade(key) {
     this.isPaused = false;
     this.scene.stop('UpgradeChoiceScene');
 
+    const wu = CONFIG.WEAPON_UPGRADES[key];
+    if (!wu) return;
+
+    this._applyUpgradeEffect(key);
+
+    // Brief on-screen confirmation
+    const { WIDTH, HEIGHT } = CONFIG;
+    const label = this.add.text(WIDTH / 2, HEIGHT / 2 - 40, `✦ ${wu.name} ✦`, {
+      fontSize: '28px', fontFamily: 'Georgia, serif',
+      color: '#FFD700', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
+    this.tweens.add({
+      targets: label, alpha: 1, y: HEIGHT / 2 - 60, duration: 350,
+      yoyo: true, hold: 800,
+      onComplete: () => label.destroy(),
+    });
+  }
+
+  // Pure effect — no scene teardown. Used by both _applyUpgrade and _applyStartingBonus.
+  _applyUpgradeEffect(key) {
     const wu = CONFIG.WEAPON_UPGRADES[key];
     if (!wu) return;
 
@@ -1270,7 +1332,6 @@ export class GameScene extends Phaser.Scene {
         this.player._frostBolt = (this.player._frostBolt || 0) + 1;
         break;
       case 'guardian': {
-        // Two guardian mounts, offset by π
         const g1 = new WeaponMount(this, this.player, { ...wu, initialAngle: 0 });
         const g2 = new WeaponMount(this, this.player, { ...wu, initialAngle: Math.PI });
         this._weaponMounts.push(g1, g2);
@@ -1315,18 +1376,6 @@ export class GameScene extends Phaser.Scene {
         EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
         break;
     }
-
-    // Brief on-screen confirmation
-    const { WIDTH, HEIGHT } = CONFIG;
-    const label = this.add.text(WIDTH / 2, HEIGHT / 2 - 40, `✦ ${wu.name} ✦`, {
-      fontSize: '28px', fontFamily: 'Georgia, serif',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
-    this.tweens.add({
-      targets: label, alpha: 1, y: HEIGHT / 2 - 60, duration: 350,
-      yoyo: true, hold: 800,
-      onComplete: () => label.destroy(),
-    });
   }
 
   _triggerMountExplosion(x, y, damage, stacks = 1) {

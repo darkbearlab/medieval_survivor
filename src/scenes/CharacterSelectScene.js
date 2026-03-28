@@ -1,6 +1,12 @@
 import { CONFIG } from '../config.js';
 
-const CHAR_KEYS = ['warrior', 'ranger', 'mage'];
+// Helper: read a character's starting weapon config
+function weapCfg(charKey) {
+  const wKey = CONFIG.CHARACTERS[charKey]?.STARTING_WEAPON || 'hunter_bow';
+  return CONFIG.WEAPONS[wKey] || CONFIG.WEAPONS.hunter_bow;
+}
+
+const CHAR_KEYS = ['warrior', 'ranger', 'mage', 'princess'];
 
 export class CharacterSelectScene extends Phaser.Scene {
   constructor() {
@@ -26,8 +32,10 @@ export class CharacterSelectScene extends Phaser.Scene {
       fontSize: '14px', color: '#555555',
     }).setOrigin(0.5);
 
-    // Character cards
-    const cardCentersX = [W / 2 - 290, W / 2, W / 2 + 290];
+    // Character cards — evenly spaced for up to 4 characters
+    const cardSpacing = 260;
+    const totalW = cardSpacing * (CHAR_KEYS.length - 1);
+    const cardCentersX = CHAR_KEYS.map((_, i) => W / 2 - totalW / 2 + i * cardSpacing);
     CHAR_KEYS.forEach((key, i) => {
       this._buildCard(cardCentersX[i], 330, key);
     });
@@ -115,18 +123,25 @@ export class CharacterSelectScene extends Phaser.Scene {
     }).setOrigin(0.5).setVisible(false);
     details.push(tagline);
 
+    // Weapon tag (shown below tagline)
+    const wCfg = weapCfg(key);
+    const weapTag = this.add.text(cx, cy + 96, `${wCfg.icon} ${wCfg.name}`, {
+      fontSize: '12px', color: '#' + cfg.ACCENT.toString(16).padStart(6,'0'),
+    }).setOrigin(0.5).setVisible(false);
+    details.push(weapTag);
+
     // Stat bars
     const stats = [
       { label: 'HP',   pct: cfg.HP / 180 },
       { label: '速度', pct: cfg.SPEED / 180 },
-      { label: '射程', pct: cfg.ATTACK_RANGE / 260 },
-      { label: cfg.DEFENSE_PCT > 0 ? '減傷' : cfg.AOE ? 'AoE' : '防禦',
-        pct: cfg.DEFENSE_PCT > 0 ? cfg.DEFENSE_PCT / 0.30 : cfg.AOE ? 1.0 : 0,
-        special: cfg.DEFENSE_PCT > 0 ? `${Math.round(cfg.DEFENSE_PCT * 100)}%` : cfg.AOE ? '✓' : '─' },
+      { label: '射程', pct: wCfg.RANGE / 260 },
+      { label: wCfg.AOE ? 'AoE' : cfg.DEFENSE_PCT > 0 ? '減傷' : '防禦',
+        pct:     wCfg.AOE ? 1.0 : cfg.DEFENSE_PCT > 0 ? cfg.DEFENSE_PCT / 0.30 : 0,
+        special: wCfg.AOE ? '✓'  : cfg.DEFENSE_PCT > 0 ? `${Math.round(cfg.DEFENSE_PCT * 100)}%` : '─' },
     ];
 
     const barW = 120, barH = 8;
-    const barStartY = cy + 112;
+    const barStartY = cy + 126;  // shifted down to make room for weapon tag at cy+96
     stats.forEach((st, i) => {
       const ry = barStartY + i * 26;
 
@@ -156,7 +171,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       }
     });
 
-    const lore = this.add.text(cx, cy + 224, cfg.lore, {
+    const lore = this.add.text(cx, cy + 238, cfg.lore, {
       fontSize: '11px', color: '#444444',
     }).setOrigin(0.5).setVisible(false);
     details.push(lore);

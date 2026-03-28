@@ -30,6 +30,7 @@ export class BootScene extends Phaser.Scene {
     this._genFarm();
     this._genPlayerWarrior();
     this._genPlayerMage();
+    this._genPlayerPrincess();
     this._genChest();
     this._genGranary();
     this._genCastle();
@@ -720,6 +721,52 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(8, 28, 6, 4);
     g.fillRect(18, 28, 6, 4);
     g.generateTexture('player_mage', 32, 32);
+    g.destroy();
+  }
+
+  _genPlayerPrincess() {
+    const g = this.make.graphics({ add: false });
+    // Dress — rose pink
+    g.fillStyle(0xFF88CC);
+    g.fillRect(6, 14, 20, 14);
+    // Dress skirt — wider at bottom
+    g.fillStyle(0xFF66BB);
+    g.fillRect(4, 22, 24, 8);
+    // Dress highlight
+    g.fillStyle(0xFFAADD);
+    g.fillRect(11, 16, 5, 8);
+    // Head — skin
+    g.fillStyle(0xFFCC80);
+    g.fillRect(10, 5, 12, 10);
+    // Hair — golden blonde
+    g.fillStyle(0xFFDD44);
+    g.fillRect(9, 4, 14, 5);
+    g.fillRect(9, 9, 3, 6);   // left side hair
+    g.fillRect(20, 9, 3, 6);  // right side hair
+    // Crown — gold
+    g.fillStyle(0xFFCC00);
+    g.fillRect(10, 1, 12, 5);
+    // Crown points
+    g.fillStyle(0xFFDD44);
+    g.fillRect(10, 0, 3, 4);
+    g.fillRect(14, 0, 4, 3);
+    g.fillRect(19, 0, 3, 4);
+    // Crown gem — ruby
+    g.fillStyle(0xFF2244);
+    g.fillRect(15, 1, 2, 2);
+    // Scepter — gold
+    g.fillStyle(0xCCAA00);
+    g.fillRect(25, 8, 3, 20);
+    // Scepter orb — pink glowing
+    g.fillStyle(0xFF44AA);
+    g.fillRect(23, 5, 7, 7);
+    g.fillStyle(0xFF88DD);
+    g.fillRect(25, 6, 3, 3);
+    // Shoes
+    g.fillStyle(0x884466);
+    g.fillRect(8, 30, 5, 2);
+    g.fillRect(19, 30, 5, 2);
+    g.generateTexture('player_princess', 32, 32);
     g.destroy();
   }
 
