@@ -124,9 +124,9 @@ export class UpgradePanel {
     if (b.type === 'tower') {
       this.statsText.setText(`射程 ${b.range}  速率 ${(1000 / b.attackRate).toFixed(1)}/s`);
     } else if (b.type === 'smith') {
-      this.statsText.setText(`防禦加成 +${b.defenseBonus}`);
+      this.statsText.setText(`士兵/法師防禦 +${b.defenseBonus}\n範圍 ${CONFIG.BUILDINGS.BLACKSMITH.BUFF_RANGE}px`);
     } else if (b.type === 'training') {
-      this.statsText.setText(`攻擊加成 +${b.atkBonus}`);
+      this.statsText.setText(`士兵/法師攻擊 +${b.atkBonus}\n範圍 ${CONFIG.BUILDINGS.TRAINING_GROUND.BUFF_RANGE}px`);
     } else if (b.type === 'cafeteria') {
       this.statsText.setText(`回血 ${b.healRate}HP/s  範圍 ${b.healRange}`);
     } else if (b.type === 'gathering') {

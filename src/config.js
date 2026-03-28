@@ -108,12 +108,14 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     BLACKSMITH: {
       COST: { wood: 15, stone: 10 },
       HP: 120,
-      DEFENSE_BONUS: 5,
+      DEFENSE_BONUS: 5,   // per building; applied to units whose barracks is within BUFF_RANGE
+      BUFF_RANGE: 240,    // px — barracks/magetower must be within this to receive buff
     },
     TRAINING_GROUND: {
       COST: { wood: 12, stone: 8 },
       HP: 100,
-      ATTACK_BONUS: 10,
+      ATTACK_BONUS: 10,   // per building; applied to units whose barracks is within BUFF_RANGE
+      BUFF_RANGE: 240,
     },
     CAFETERIA: {
       COST: { wood: 10, stone: 5 },

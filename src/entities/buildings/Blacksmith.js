@@ -1,4 +1,5 @@
-import { CONFIG } from '../../config.js';
+import { CONFIG }   from '../../config.js';
+import { EventBus } from '../../utils/EventBus.js';
 
 export class Blacksmith {
   constructor(scene, x, y) {
@@ -18,7 +19,8 @@ export class Blacksmith {
     this.hpBar = scene.add.graphics().setDepth(16);
     this._drawHpBar();
 
-    if (scene.player) scene.player.defense += this.defenseBonus;
+    // Notify unit-buff system to recalculate
+    EventBus.emit('unit_buffs_dirty');
   }
 
   takeDamage(amount) {
@@ -33,7 +35,7 @@ export class Blacksmith {
   _destroy() {
     if (this.dead) return;
     this.dead = true;
-    if (this.scene.player) this.scene.player.defense -= this.defenseBonus;
+    EventBus.emit('unit_buffs_dirty');
     if (this.hpBar) { this.hpBar.destroy(); this.hpBar = null; }
     if (this.scene.smithGroup) {
       this.scene.smithGroup.remove(this.sprite, true, true);

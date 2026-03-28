@@ -85,6 +85,9 @@ export class GameScene extends Phaser.Scene {
     this._collectProgress = new Map();   // node -> ms held
     this._collectGraphics = this.add.graphics().setDepth(18);
 
+    // --- Range indicator (hover + placement preview) ---
+    this._rangeCircle = this.add.graphics().setDepth(19);
+
     // --- Camera ---
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12);
@@ -124,10 +127,12 @@ export class GameScene extends Phaser.Scene {
 
     // --- Pointer events ---
     this.input.on('pointermove', (pointer) => {
+      const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       if (this.buildingSystem.isPlacing()) {
-        const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         this.buildingSystem.updatePreview(world.x, world.y);
       }
+      if (!this.isGameOver) this._updateRangeIndicator(world);
+      else this._rangeCircle.clear();
     });
 
     this.input.on('pointerdown', (pointer) => {
@@ -260,9 +265,14 @@ export class GameScene extends Phaser.Scene {
       EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
       this.buildingSystem.startPlacing(item.type, true, item.upgradeLevel || 0);
     };
+    this._onUnitBuffsDirty = () => this._recalcUnitBonuses();
     EventBus.on('build_select',         this._onBuildSelect);
     EventBus.on('build_cancelled',      this._onBuildCancelled);
     EventBus.on('free_build_use',       this._onFreeBuildUse);
+    EventBus.on('unit_buffs_dirty',     this._onUnitBuffsDirty);
+
+    // Periodic safety recalc (handles edge cases like building destruction timing)
+    this._bonusRecalcTimer = 0;
 
     // --- Attack timing ---
     this.nextAttackTime = 0;
@@ -801,6 +811,8 @@ export class GameScene extends Phaser.Scene {
         });
       }
     }
+    // Rally state change affects which buff tier units receive
+    this._recalcUnitBonuses();
   }
 
   // ─────────────────────────────────────────────
@@ -1057,6 +1069,13 @@ export class GameScene extends Phaser.Scene {
 
     // Weapon mounts
     for (const wm of this._weaponMounts) wm.update(time, delta);
+
+    // Periodic unit-buff recalculation (safety net, real recalc fires via event)
+    this._bonusRecalcTimer += delta;
+    if (this._bonusRecalcTimer >= 3000) {
+      this._bonusRecalcTimer = 0;
+      this._recalcUnitBonuses();
+    }
 
     // Building damage smoke
     this._updateBuildingSmoke(delta);
@@ -1369,6 +1388,137 @@ export class GameScene extends Phaser.Scene {
   //  Visual feedback helpers (Phase 7)
   // ─────────────────────────────────────────────
 
+  // ─────────────────────────────────────────────
+  //  Range indicator — hover & placement preview
+  // ─────────────────────────────────────────────
+
+  /**
+   * Called every pointermove.
+   * Shows a translucent range circle for:
+   *  • The building being placed (at the snapped preview position)
+   *  • Any existing building the pointer is hovering over (within 34 px)
+   */
+  _updateRangeIndicator(world) {
+    this._rangeCircle.clear();
+
+    // Placement preview mode
+    if (this.buildingSystem.isPlacing()) {
+      const ri = this._getRangeForType(this.buildingSystem.placingType);
+      const ps = this.buildingSystem.previewSprite;
+      if (ri && ps) this._drawRangeCircle(ps.x, ps.y, ri.radius, ri.color);
+      return;
+    }
+
+    // Hover mode — find nearest range-bearing building within 34 px
+    const bs  = this.buildingSystem;
+    const all = [
+      ...bs.towers, ...bs.cafeterias, ...bs.gatheringPosts,
+      ...bs.smiths, ...bs.trainingGrounds, ...bs.castles,
+      ...bs.barracks, ...bs.mageTowers,
+    ];
+    let closest = null, closestDist = 34;
+    for (const b of all) {
+      if (b.dead) continue;
+      const d = Phaser.Math.Distance.Between(world.x, world.y, b.x, b.y);
+      if (d < closestDist) { closestDist = d; closest = b; }
+    }
+    if (closest) {
+      const ri = this._getRangeForBuilding(closest);
+      if (ri) this._drawRangeCircle(closest.x, closest.y, ri.radius, ri.color);
+    }
+  }
+
+  /** Range data for each placeable type (uses base config values). */
+  _getRangeForType(type) {
+    const C = CONFIG.BUILDINGS;
+    switch (type) {
+      case 'tower':      return { radius: C.TOWER.RANGE,                   color: 0x4488FF };
+      case 'cafeteria':  return { radius: C.CAFETERIA.HEAL_RANGE,          color: 0x44FF88 };
+      case 'gathering':  return { radius: C.GATHERING_POST.RANGE,          color: 0xFFDD44 };
+      case 'smith':      return { radius: C.BLACKSMITH.BUFF_RANGE,         color: 0x88AAFF };
+      case 'training':   return { radius: C.TRAINING_GROUND.BUFF_RANGE,    color: 0xFFAA44 };
+      case 'castle':     return { radius: C.CASTLE.RANGE,                  color: 0x4488FF };
+      case 'barracks':   return { radius: CONFIG.SOLDIERS.DETECT_RANGE,    color: 0x44CCFF };
+      case 'mage_tower': return { radius: CONFIG.ALLIED_MAGES.DETECT_RANGE, color: 0xCC88FF };
+      default: return null;
+    }
+  }
+
+  /** Range data for an existing building instance (uses live values so upgrades show correctly). */
+  _getRangeForBuilding(b) {
+    switch (b.type) {
+      case 'tower':      return { radius: b.range,                              color: 0x4488FF };
+      case 'cafeteria':  return { radius: b.healRange,                          color: 0x44FF88 };
+      case 'gathering':  return { radius: b.range,                              color: 0xFFDD44 };
+      case 'smith':      return { radius: CONFIG.BUILDINGS.BLACKSMITH.BUFF_RANGE,      color: 0x88AAFF };
+      case 'training':   return { radius: CONFIG.BUILDINGS.TRAINING_GROUND.BUFF_RANGE, color: 0xFFAA44 };
+      case 'castle':     return { radius: b.range,                              color: 0x4488FF };
+      case 'barracks':   return { radius: CONFIG.SOLDIERS.DETECT_RANGE,         color: 0x44CCFF };
+      case 'mage_tower': return { radius: CONFIG.ALLIED_MAGES.DETECT_RANGE,     color: 0xCC88FF };
+      default: return null;
+    }
+  }
+
+  /** Draw a translucent filled circle with a stroked border. */
+  _drawRangeCircle(x, y, radius, color) {
+    this._rangeCircle.fillStyle(color, 0.08);
+    this._rangeCircle.fillCircle(x, y, radius);
+    this._rangeCircle.lineStyle(1.5, color, 0.65);
+    this._rangeCircle.strokeCircle(x, y, radius);
+  }
+
+  /**
+   * Recalculate atkBonus / defBonus on all living soldiers and allied mages.
+   *
+   * Building-anchored units:
+   *   Receive the full per-building bonus from every TrainingGround / Blacksmith
+   *   whose distance to the unit's home building (barracks/magetower) is < BUFF_RANGE.
+   *
+   * Deployed / rally units (following player):
+   *   Receive half the grand total from all alive TrainingGrounds / Blacksmiths,
+   *   regardless of position.
+   */
+  _recalcUnitBonuses() {
+    const bs         = this.buildingSystem;
+    const BUFF_RANGE = CONFIG.BUILDINGS.BLACKSMITH.BUFF_RANGE;
+    const player     = this.player;
+    const inRally    = this.soldierRallyMode;
+
+    // Total bonuses across all living buildings
+    let totalAtk = 0, totalDef = 0;
+    for (const tg of bs.trainingGrounds) { if (!tg.dead) totalAtk += tg.atkBonus; }
+    for (const sm of bs.smiths)          { if (!sm.dead) totalDef += sm.defenseBonus; }
+    const deployedAtk = Math.floor(totalAtk / 2);
+    const deployedDef = Math.floor(totalDef / 2);
+
+    for (const unit of [...bs.soldiers, ...bs.alliedMages]) {
+      if (unit.dead) continue;
+      const followPlayer = unit.deployed || (inRally && player && !player.isDead);
+
+      if (followPlayer) {
+        unit.atkBonus = deployedAtk;
+        unit.defBonus = deployedDef;
+      } else {
+        // Home building: soldiers anchor on barracks, mages on tower
+        const anchor = unit.barracks || unit.tower;
+        if (!anchor) { unit.atkBonus = 0; unit.defBonus = 0; continue; }
+        let atk = 0, def = 0;
+        for (const tg of bs.trainingGrounds) {
+          if (!tg.dead && Phaser.Math.Distance.Between(anchor.x, anchor.y, tg.x, tg.y) < BUFF_RANGE) {
+            atk += tg.atkBonus;
+          }
+        }
+        for (const sm of bs.smiths) {
+          if (!sm.dead && Phaser.Math.Distance.Between(anchor.x, anchor.y, sm.x, sm.y) < BUFF_RANGE) {
+            def += sm.defenseBonus;
+          }
+        }
+        unit.atkBonus = atk;
+        unit.defBonus = def;
+      }
+    }
+  }
+
   /** Floating "+木" / "+石" / "+食" text when player collects a node or farm. */
   _showCollectFloat(node) {
     const isFarm = node.type === 'farm';
@@ -1420,6 +1570,7 @@ export class GameScene extends Phaser.Scene {
     EventBus.off('build_select',    this._onBuildSelect);
     EventBus.off('build_cancelled', this._onBuildCancelled);
     EventBus.off('free_build_use',  this._onFreeBuildUse);
+    EventBus.off('unit_buffs_dirty', this._onUnitBuffsDirty);
     if (this.dayNightSystem) this.dayNightSystem.destroy();
     EventBus.removeAllListeners();
   }

@@ -99,7 +99,7 @@ export class Soldier {
         if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
-          this.scene._fireProjectile(this.sprite.x, this.sprite.y, target, this.damage);
+          this.scene._fireProjectile(this.sprite.x, this.sprite.y, target, this.damage + (this.atkBonus || 0));
         }
       } else {
         this._moveDirectTo(target.x, target.y);
@@ -110,7 +110,7 @@ export class Soldier {
         if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
         if (time - this.lastAttack > this.attackRate) {
           this.lastAttack = time;
-          this.scene._fireProjectile(this.sprite.x, this.sprite.y, target, this.damage);
+          this.scene._fireProjectile(this.sprite.x, this.sprite.y, target, this.damage + (this.atkBonus || 0));
         }
       } else {
         this._moveDirectTo(target.x, target.y);
@@ -139,7 +139,8 @@ export class Soldier {
 
   takeDamage(amount) {
     if (this.dead) return;
-    this.hp -= amount;
+    const effective = Math.max(1, amount - (this.defBonus || 0));
+    this.hp -= effective;
     if (this.hp <= 0) this._die();
     else this._drawHpBar();
   }
