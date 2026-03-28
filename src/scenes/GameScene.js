@@ -246,7 +246,6 @@ export class GameScene extends Phaser.Scene {
     // --- Free building inventory (stash from chest/boss drops) ---
     this._freeBuildingInventory = [];
     this._pendingFreeItem       = null;
-    this._applyStartingBonus();
 
     // --- EventBus subscriptions ---
     this._onBuildSelect    = (type) => this.buildingSystem.startPlacing(type);
@@ -293,9 +292,12 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch('UIScene');
 
     // --- Initial HUD values ---
+    this._applyStartingBonus();
     EventBus.emit('resources_updated', this.economy.resources);
     EventBus.emit('town_hp_changed', this.townCenter.hp, this.townCenter.maxHp);
     EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
+    if (this._freeBuildingInventory.length > 0)
+      EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
 
     // --- Map border (visual) ---
     const border = this.add.graphics().setDepth(1);
@@ -1264,7 +1266,7 @@ export class GameScene extends Phaser.Scene {
     if (bonus.food) {
       this.economy.resources.food = Math.min(
         this.economy.resources.food + bonus.food,
-        this.economy.maxFood
+        this.economy.resources.maxFood
       );
     }
     if (bonus.gold || bonus.wood || bonus.stone || bonus.food) {
