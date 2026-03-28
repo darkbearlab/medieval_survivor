@@ -73,7 +73,6 @@ export class GameScene extends Phaser.Scene {
     this.townCenter    = new TownCenter(this, TOWN_CENTER.X, TOWN_CENTER.Y);
     this.resourceNodes = this._createResourceNodes();
     this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120, this.characterKey);
-    this._applyStartingBonus();
 
     // --- Terrain (impassable rocks) ---
     // Disabled: terrain caused enemies to get stuck. Class/method preserved for future use.
@@ -247,6 +246,7 @@ export class GameScene extends Phaser.Scene {
     // --- Free building inventory (stash from chest/boss drops) ---
     this._freeBuildingInventory = [];
     this._pendingFreeItem       = null;
+    this._applyStartingBonus();
 
     // --- EventBus subscriptions ---
     this._onBuildSelect    = (type) => this.buildingSystem.startPlacing(type);
