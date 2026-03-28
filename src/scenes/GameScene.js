@@ -297,7 +297,7 @@ export class GameScene extends Phaser.Scene {
     EventBus.emit('town_hp_changed', this.townCenter.hp, this.townCenter.maxHp);
     EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
     if (this._freeBuildingInventory.length > 0)
-      EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
+      this.time.delayedCall(200, () => EventBus.emit('free_buildings_updated', this._freeBuildingInventory));
 
     // --- Map border (visual) ---
     const border = this.add.graphics().setDepth(1);
@@ -1285,7 +1285,7 @@ export class GameScene extends Phaser.Scene {
         const m = META[bType] || { name: bType, desc: '免費放置', texKey: `building_${bType}`, icon: '🏗' };
         this._freeBuildingInventory.push({ type: bType, upgradeLevel: 0, ...m });
       }
-      EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
+      // Emission is deferred in create() after UIScene has started
     }
 
     // ── Pre-applied upgrades (e.g. { upgrades: ['dual_shot'] }) ─────────────
