@@ -62,6 +62,9 @@ export class WaveSystem {
       });
     }
 
+    // Custom offensives from editor
+    this._checkCustomOffensives(this.currentWave);
+
     EventBus.emit('wave_started', this.currentWave);
   }
 
@@ -207,5 +210,123 @@ export class WaveSystem {
         scene.enemies.add(enemy.sprite);
       });
     }
+  }
+
+  // ── Custom offensives (loaded from offensive-editor.html via localStorage) ──
+
+  _checkCustomOffensives(waveNum) {
+    let data;
+    try {
+      const raw = localStorage.getItem('medieval_survivor_offensives');
+      if (!raw) return;
+      data = JSON.parse(raw);
+    } catch(e) { return; }
+
+    const offensives = data.offensives || [];
+    for (const cfg of offensives) {
+      if (!cfg.enabled) continue;
+      const day    = cfg.triggerDay    || 1;
+      const timing = cfg.triggerTiming || 'night';
+      let matches = false;
+      if (timing === 'any') {
+        const first = (day - 1) * 3 + 1;
+        matches = waveNum >= first && waveNum <= day * 3;
+      } else {
+        let target;
+        if (timing === 'wave1') target = (day - 1) * 3 + 1;
+        else if (timing === 'wave2') target = (day - 1) * 3 + 2;
+        else target = day * 3;  // night
+        matches = waveNum === target;
+      }
+      if (matches) this._triggerCustomOffensive(cfg, waveNum);
+    }
+  }
+
+  _triggerCustomOffensive(cfg, waveNum) {
+    const scene  = this.scene;
+    const { WORLD_WIDTH, WORLD_HEIGHT } = CONFIG;
+    const margin     = 40;
+    const delayMs    = (cfg.delaySeconds || 0) * 1000;
+    const intervalMs = cfg.spawnIntervalMs || 300;
+
+    // Resolve direction
+    const dirMap  = { north: 0, south: 1, west: 2, east: 3 };
+    const dirIndex = cfg.direction === 'random'
+      ? Phaser.Math.Between(0, 3)
+      : (dirMap[cfg.direction] ?? Phaser.Math.Between(0, 3));
+    const dirNames = ['北方', '南方', '西方', '東方'];
+
+    // Build spawn queue from unit counts
+    const queue = [];
+    const units = cfg.units || {};
+    for (const [type, count] of Object.entries(units)) {
+      for (let i = 0; i < (count || 0); i++) queue.push(type);
+    }
+
+    // Show alert
+    scene.time.delayedCall(delayMs, () => {
+      if (scene.isGameOver) return;
+      scene._showCoordinatedAssaultAlert(dirNames[dirIndex], cfg.name || '大型攻勢');
+    });
+
+    // Spawn regular units
+    queue.forEach((type, i) => {
+      scene.time.delayedCall(delayMs + 1200 + i * intervalMs, () => {
+        if (scene.isGameOver) return;
+        const { x, y } = this._spawnPosFromDir(dirIndex, WORLD_WIDTH, WORLD_HEIGHT, margin);
+        let enemy;
+        switch (type) {
+          case 'archer': enemy = new Archer(scene, x, y, waveNum); break;
+          case 'heavy':  enemy = new Heavy(scene, x, y, waveNum);  break;
+          case 'mage':   enemy = new Mage(scene, x, y, waveNum);   break;
+          default:       enemy = new Enemy(scene, x, y, scaleCfg(CONFIG.ENEMIES.BANDIT, waveNum));
+        }
+        scene.enemies.add(enemy.sprite);
+      });
+    });
+
+    // Spawn elites
+    if (cfg.elite?.enabled) {
+      const eliteCount = Math.min(cfg.elite.count || 1, 3);
+      const eliteTypes = cfg.elite.type === 'random'
+        ? ['bandit', 'archer', 'heavy', 'mage'] : [cfg.elite.type];
+      for (let i = 0; i < eliteCount; i++) {
+        scene.time.delayedCall(delayMs + 2000 + i * 600, () => {
+          if (scene.isGameOver) return;
+          const { x, y } = this._spawnPosFromDir(dirIndex, WORLD_WIDTH, WORLD_HEIGHT, margin);
+          const eliteType = eliteTypes[Phaser.Math.Between(0, eliteTypes.length - 1)];
+          const elite = new Elite(scene, x, y, eliteType, waveNum);
+          scene.enemies.add(elite.sprite);
+          scene._showEliteAlert(elite._nameTag?.text || '⚔ 精英敵人');
+        });
+      }
+    }
+  }
+
+  _spawnPosFromDir(dirIndex, W, H, margin) {
+    const spread = 120;
+    const mid = 0.5;
+    let x, y;
+    switch (dirIndex) {
+      case 0: // North
+        x = Phaser.Math.Between(Math.round(W*(mid-0.15)), Math.round(W*(mid+0.15)));
+        y = margin + Phaser.Math.Between(-spread/2, spread/2);
+        break;
+      case 1: // South
+        x = Phaser.Math.Between(Math.round(W*(mid-0.15)), Math.round(W*(mid+0.15)));
+        y = H - margin + Phaser.Math.Between(-spread/2, spread/2);
+        break;
+      case 2: // West
+        x = margin + Phaser.Math.Between(-spread/2, spread/2);
+        y = Phaser.Math.Between(Math.round(H*(mid-0.15)), Math.round(H*(mid+0.15)));
+        break;
+      default: // East
+        x = W - margin + Phaser.Math.Between(-spread/2, spread/2);
+        y = Phaser.Math.Between(Math.round(H*(mid-0.15)), Math.round(H*(mid+0.15)));
+    }
+    return {
+      x: Phaser.Math.Clamp(x, margin, W - margin),
+      y: Phaser.Math.Clamp(y, margin, H - margin),
+    };
   }
 }

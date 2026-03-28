@@ -1,4 +1,5 @@
 import { CONFIG, BALANCE_SETTINGS, getConfigValue, setConfigValue, resetConfig } from '../config.js';
+import { offensiveEditorOverlay } from '../ui/OffensiveEditorOverlay.js';
 
 const BALANCE_KEY = 'medieval_survivor_balance';
 
@@ -79,6 +80,27 @@ export class MenuScene extends Phaser.Scene {
     cfgBg.on('pointerover', () => { cfgBg.setFillStyle(0x223322); cfgTxt.setColor('#AAFFAA'); });
     cfgBg.on('pointerout',  () => { cfgBg.setFillStyle(0x1a2a1a); cfgTxt.setColor('#88CC88'); });
     cfgBg.on('pointerdown', () => { this._openBalancePanel(); });
+
+    // Offensive editor button (top-right corner gear icon)
+    const gearBg = this.add.rectangle(WIDTH - 22, 22, 36, 36, 0x1a1208, 0.85)
+      .setStrokeStyle(1, 0x5a4020).setInteractive({ useHandCursor: true }).setDepth(50);
+    const gearTxt = this.add.text(WIDTH - 22, 22, '⚙', {
+      fontSize: '20px', color: '#a07828',
+    }).setOrigin(0.5).setDepth(51);
+    const gearHint = this.add.text(WIDTH - 44, 22, '攻勢設定', {
+      fontSize: '12px', color: '#6a5020',
+    }).setOrigin(1, 0.5).setDepth(51).setAlpha(0);
+    gearBg.on('pointerover', () => {
+      gearBg.setFillStyle(0x2a1e0a).setStrokeStyle(1, 0xd4a43a);
+      gearTxt.setColor('#d4a43a');
+      this.tweens.add({ targets: gearHint, alpha: 1, duration: 150 });
+    });
+    gearBg.on('pointerout', () => {
+      gearBg.setFillStyle(0x1a1208).setStrokeStyle(1, 0x5a4020);
+      gearTxt.setColor('#a07828');
+      this.tweens.add({ targets: gearHint, alpha: 0, duration: 150 });
+    });
+    gearBg.on('pointerdown', () => offensiveEditorOverlay.show(false));
 
     // Controls hint
     this.add.text(WIDTH / 2, HEIGHT - 90, '操作說明', { fontSize: '15px', color: '#888888' }).setOrigin(0.5);

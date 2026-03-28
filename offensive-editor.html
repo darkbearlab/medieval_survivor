@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大型攻勢編輯器 — 中古世紀守城</title>
+  <style>
+    :root {
+      --bg: #1a1510;
+      --panel: #22190e;
+      --card: #2a1f10;
+      --border: #5a4020;
+      --border-light: #7a5c30;
+      --gold: #d4a43a;
+      --gold-light: #f0c060;
+      --red: #cc3333;
+      --red-light: #ff5555;
+      --green: #3a8a3a;
+      --green-light: #55cc55;
+      --blue: #2255aa;
+      --blue-light: #4488dd;
+      --text: #d8c8a8;
+      --text-dim: #8a7860;
+      --text-bright: #f0e8d0;
+      --night: #334466;
+      --night-light: #6688cc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(180deg, #2e2010 0%, #1a1510 100%);
+      border-bottom: 2px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: 22px;
+      color: var(--gold);
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px rgba(212,164,58,0.4);
+      flex: 1;
+    }
+    header h1 span { color: var(--text-dim); font-size: 13px; font-weight: normal; margin-left: 10px; }
+    .header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Buttons ───────────────────────────────────────────── */
+    .btn {
+      padding: 7px 16px;
+      border: 1px solid;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-gold   { background: rgba(212,164,58,0.15); border-color: var(--gold); color: var(--gold); }
+    .btn-gold:hover { background: rgba(212,164,58,0.3); color: var(--gold-light); }
+    .btn-green  { background: rgba(58,138,58,0.15); border-color: var(--green); color: var(--green-light); }
+    .btn-green:hover { background: rgba(58,138,58,0.3); }
+    .btn-blue   { background: rgba(34,85,170,0.2); border-color: var(--blue); color: var(--blue-light); }
+    .btn-blue:hover  { background: rgba(34,85,170,0.35); }
+    .btn-red    { background: rgba(204,51,51,0.15); border-color: var(--red); color: var(--red-light); }
+    .btn-red:hover   { background: rgba(204,51,51,0.3); }
+    .btn-dim    { background: rgba(90,64,32,0.2); border-color: var(--border); color: var(--text-dim); }
+    .btn-dim:hover   { background: rgba(90,64,32,0.4); color: var(--text); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* ── Main layout ───────────────────────────────────────── */
+    main { padding: 20px 28px; max-width: 1100px; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .toolbar-left { display: flex; gap: 8px; align-items: center; }
+    .toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+    /* ── Offensive Cards ───────────────────────────────────── */
+    #card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+    }
+    .empty-state .big { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      transition: border-color 0.15s;
+    }
+    .card:hover { border-color: var(--border-light); }
+    .card.disabled { opacity: 0.5; }
+
+    .card-main { display: flex; flex-direction: column; gap: 6px; }
+    .card-name {
+      font-size: 17px;
+      font-weight: bold;
+      color: var(--gold-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-name .tag {
+      font-size: 11px;
+      font-weight: normal;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid;
+    }
+    .tag-night  { background: rgba(51,68,102,0.4); border-color: var(--night-light); color: var(--night-light); }
+    .tag-day1   { background: rgba(212,164,58,0.15); border-color: var(--gold); color: var(--gold); }
+    .tag-day2   { background: rgba(240,192,96,0.15); border-color: var(--gold-light); color: var(--gold-light); }
+    .tag-any    { background: rgba(90,64,32,0.3); border-color: var(--border-light); color: var(--text-dim); }
+
+    .card-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--text-dim);
+      flex-wrap: wrap;
+    }
+    .card-meta strong { color: var(--text); }
+
+    .card-units {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+    .unit-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(90,64,32,0.3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 12px;
+    }
+    .unit-chip.bandit { border-color: #886644; color: #ccaa88; }
+    .unit-chip.archer { border-color: #448844; color: #88cc88; }
+    .unit-chip.heavy  { border-color: #886688; color: #ccaacc; }
+    .unit-chip.mage   { border-color: #4466aa; color: #88aadd; }
+    .unit-chip.elite  { border-color: #cc9900; color: #ffcc44; }
+
+    .card-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+      justify-content: flex-start;
+    }
+    .card-actions .action-row { display: flex; gap: 6px; }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 42px;
+      height: 22px;
+      cursor: pointer;
+    }
+    .toggle input { display: none; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #3a2a14;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      transition: background 0.2s;
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle input:checked ~ .toggle-track { background: rgba(58,138,58,0.4); border-color: var(--green); }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(20px); background: var(--green-light); }
+
+    /* ── Modal ─────────────────────────────────────────────── */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #modal-overlay.open { display: flex; }
+
+    #modal {
+      background: var(--panel);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 620px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-header h2 { font-size: 17px; color: var(--gold); flex: 1; }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* ── Form sections ─────────────────────────────────────── */
+    .form-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .form-section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 5px;
+      margin-bottom: 2px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    input[type=text],
+    input[type=number],
+    select,
+    textarea {
+      background: rgba(90,64,32,0.2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-bright);
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--gold); }
+    select option { background: var(--panel); }
+
+    .radio-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .radio-opt {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      background: rgba(90,64,32,0.2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .radio-opt input { width: auto; margin: 0; }
+    .radio-opt:has(input:checked) {
+      border-color: var(--gold);
+      background: rgba(212,164,58,0.15);
+      color: var(--gold-light);
+    }
+
+    /* Unit grid */
+    .unit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .unit-input {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(90,64,32,0.15);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 10px;
+    }
+    .unit-icon { font-size: 18px; width: 24px; text-align: center; }
+    .unit-label { font-size: 12px; color: var(--text-dim); flex: 1; }
+    .unit-input input { width: 60px; text-align: center; padding: 3px 6px; }
+
+    /* Elite section */
+    .elite-section {
+      background: rgba(200,160,0,0.08);
+      border: 1px solid rgba(200,160,0,0.3);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .elite-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .elite-toggle-row label { margin: 0; font-size: 13px; color: var(--text); cursor: pointer; }
+    .elite-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .elite-fields.hidden { display: none; }
+
+    /* Preview bar */
+    #preview-bar {
+      background: rgba(212,164,58,0.08);
+      border: 1px solid rgba(212,164,58,0.25);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    #preview-bar strong { color: var(--gold); }
+    #preview-bar .preview-line { margin-top: 4px; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--panel);
+      border: 1px solid var(--green);
+      color: var(--green-light);
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      z-index: 200;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Stats bar at bottom */
+    #stats-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(26,21,16,0.95);
+      border-top: 1px solid var(--border);
+      padding: 8px 28px;
+      font-size: 12px;
+      color: var(--text-dim);
+      display: flex;
+      gap: 20px;
+    }
+    #stats-bar strong { color: var(--text); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚔ 大型攻勢編輯器 <span>中古世紀守城 — Custom Offensive Events</span></h1>
+  <div class="header-btns">
+    <button class="btn btn-blue" onclick="importJSON()">📂 匯入 JSON</button>
+    <button class="btn btn-gold" onclick="exportJSON()">💾 匯出 JSON</button>
+    <button class="btn btn-green" onclick="applyToGame()">🎮 套用至遊戲</button>
+    <input type="file" id="file-input" accept=".json" style="display:none" onchange="onFileLoad(event)">
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn btn-gold" onclick="openAddModal()">＋ 新增攻勢</button>
+      <button class="btn btn-dim" onclick="sortCards()">⇅ 排序（依天數）</button>
+    </div>
+    <div class="toolbar-right">
+      <button class="btn btn-dim btn-sm" onclick="enableAll()">全部啟用</button>
+      <button class="btn btn-dim btn-sm" onclick="disableAll()">全部停用</button>
+      <button class="btn btn-red btn-sm" onclick="clearAll()">清除全部</button>
+    </div>
+  </div>
+
+  <div id="card-list"></div>
+</main>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">新增攻勢</h2>
+      <button class="btn btn-dim btn-sm" onclick="closeModal()">✕ 關閉</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- 基本資訊 -->
+      <div class="form-section">
+        <div class="form-section-title">基本資訊</div>
+        <div class="form-group full">
+          <label>攻勢名稱（顯示在遊戲提示中）</label>
+          <input type="text" id="f-name" placeholder="例：北方蠻族大軍" maxlength="30">
+        </div>
+        <div class="form-group full">
+          <label>備註（選填，僅在此編輯器中顯示）</label>
+          <textarea id="f-desc" rows="2" placeholder="攻勢設計說明..."></textarea>
+        </div>
+      </div>
+
+      <!-- 觸發時機 -->
+      <div class="form-section">
+        <div class="form-section-title">觸發時機</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>第幾天觸發（Day = 3 波/周期）</label>
+            <input type="number" id="f-day" min="1" max="99" value="3">
+          </div>
+          <div class="form-group">
+            <label>延遲幾秒後才出現（秒）</label>
+            <input type="number" id="f-delay" min="0" max="60" value="5">
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>當天的哪一波</label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="timing" value="wave1"> ☀ 白天第 1 波</label>
+            <label class="radio-opt"><input type="radio" name="timing" value="wave2"> ☀ 白天第 2 波</label>
+            <label class="radio-opt"><input type="radio" name="timing" value="night" checked> 🌙 夜晚波</label>
+            <label class="radio-opt"><input type="radio" name="timing" value="any"> ✦ 任意（每波）</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 攻擊方向 -->
+      <div class="form-section">
+        <div class="form-section-title">攻擊方向</div>
+        <div class="form-group full">
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="direction" value="random" checked> 🎲 隨機</label>
+            <label class="radio-opt"><input type="radio" name="direction" value="north"> ↑ 北方</label>
+            <label class="radio-opt"><input type="radio" name="direction" value="south"> ↓ 南方</label>
+            <label class="radio-opt"><input type="radio" name="direction" value="west"> ← 西方</label>
+            <label class="radio-opt"><input type="radio" name="direction" value="east"> → 東方</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 參戰單位 -->
+      <div class="form-section">
+        <div class="form-section-title">參戰單位數量</div>
+        <div class="unit-grid">
+          <div class="unit-input">
+            <span class="unit-icon">🗡</span>
+            <span class="unit-label">強盜 Bandit</span>
+            <input type="number" id="u-bandit" min="0" max="50" value="0" oninput="updatePreview()">
+          </div>
+          <div class="unit-input">
+            <span class="unit-icon">🏹</span>
+            <span class="unit-label">弓箭手 Archer</span>
+            <input type="number" id="u-archer" min="0" max="50" value="0" oninput="updatePreview()">
+          </div>
+          <div class="unit-input">
+            <span class="unit-icon">🛡</span>
+            <span class="unit-label">重甲兵 Heavy</span>
+            <input type="number" id="u-heavy" min="0" max="50" value="0" oninput="updatePreview()">
+          </div>
+          <div class="unit-input">
+            <span class="unit-icon">🔮</span>
+            <span class="unit-label">黑暗法師 Mage</span>
+            <input type="number" id="u-mage" min="0" max="50" value="0" oninput="updatePreview()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>生成間隔（每隻間隔毫秒，預設 300）</label>
+          <input type="number" id="f-interval" min="50" max="2000" value="300">
+        </div>
+      </div>
+
+      <!-- 精英 -->
+      <div class="form-section">
+        <div class="form-section-title">精英敵人（Elite）</div>
+        <div class="elite-section">
+          <div class="elite-toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="e-enabled" onchange="toggleEliteFields()">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+            <label for="e-enabled">加入精英敵人</label>
+          </div>
+          <div class="elite-fields hidden" id="elite-fields">
+            <div class="form-group">
+              <label>精英類型</label>
+              <select id="e-type">
+                <option value="random">🎲 隨機</option>
+                <option value="bandit">🗡 強盜精英</option>
+                <option value="archer">🏹 弓箭手精英</option>
+                <option value="heavy">🛡 重甲精英</option>
+                <option value="mage">🔮 法師精英</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>精英數量（1–3）</label>
+              <input type="number" id="e-count" min="1" max="3" value="1" oninput="updatePreview()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 預覽 -->
+      <div id="preview-bar">
+        <strong>預覽：</strong> <span id="preview-text">請輸入單位數量</span>
+        <div class="preview-line" id="preview-wave">觸發波次：—</div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-dim" onclick="closeModal()">取消</button>
+      <button class="btn btn-gold" onclick="saveOffensive()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="stats-bar">
+  <span>攻勢數量：<strong id="stat-count">0</strong></span>
+  <span>已啟用：<strong id="stat-enabled">0</strong></span>
+  <span>LocalStorage 狀態：<strong id="stat-storage">未套用</strong></span>
+  <span style="margin-left:auto;color:#5a4020">匯出的 JSON 可長期保存，下次遊戲前匯入並按「套用至遊戲」即可生效</span>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────
+const STORAGE_KEY = 'medieval_survivor_offensives';
+let offensives = [];
+let editingId  = null;
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      offensives = data.offensives || [];
+    } catch(e) {}
+  }
+  render();
+});
+
+// ── Render ────────────────────────────────────────────────────────
+function render() {
+  const list = document.getElementById('card-list');
+  updateStats();
+
+  if (offensives.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="big">⚔</div>
+        <p>尚無攻勢設定。點擊「＋ 新增攻勢」開始建立自訂大型攻勢事件。</p>
+        <p style="margin-top:8px;font-size:12px">設定完成後，按右上角「套用至遊戲」使其在遊戲中生效。</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = offensives.map(o => cardHTML(o)).join('');
+}
+
+const timingLabel = { wave1:'☀ 白天第1波', wave2:'☀ 白天第2波', night:'🌙 夜晚波', any:'✦ 每波' };
+const timingTag   = { wave1:'tag-day1',    wave2:'tag-day2',    night:'tag-night',  any:'tag-any' };
+const dirLabel    = { random:'🎲 隨機', north:'↑ 北方', south:'↓ 南方', west:'← 西方', east:'→ 東方' };
+const unitEmoji   = { bandit:'🗡', archer:'🏹', heavy:'🛡', mage:'🔮' };
+const unitName    = { bandit:'強盜', archer:'弓箭手', heavy:'重甲兵', mage:'法師' };
+
+function cardHTML(o) {
+  const units = o.units || {};
+  const totalUnits = Object.values(units).reduce((s, v) => s + (v||0), 0);
+  const eliteCount = o.elite?.enabled ? (o.elite.count || 1) : 0;
+  const waveNum = triggerWave(o.triggerDay, o.triggerTiming);
+  const waveStr = o.triggerTiming === 'any'
+    ? `第 ${o.triggerDay} 天所有波（波 ${(o.triggerDay-1)*3+1}–${o.triggerDay*3}）`
+    : `第 ${o.triggerDay} 天 → 波次 ${waveNum}`;
+
+  const unitChips = Object.entries(units)
+    .filter(([,v]) => v > 0)
+    .map(([type, v]) => `<span class="unit-chip ${type}">${unitEmoji[type]} ${unitName[type]}×${v}</span>`)
+    .join('');
+  const eliteChip = eliteCount
+    ? `<span class="unit-chip elite">⭐ 精英×${eliteCount}</span>` : '';
+
+  return `
+  <div class="card ${o.enabled ? '' : 'disabled'}" id="card-${o.id}">
+    <div class="card-main">
+      <div class="card-name">
+        ${escHtml(o.name)}
+        <span class="tag ${timingTag[o.triggerTiming] || 'tag-any'}">${timingLabel[o.triggerTiming] || ''}</span>
+      </div>
+      <div class="card-meta">
+        <span>📅 ${waveStr}</span>
+        <span>🧭 ${dirLabel[o.direction] || '隨機'}</span>
+        <span>⏱ 延遲 ${o.delaySeconds || 0}s</span>
+        <span>總計 <strong>${totalUnits + eliteCount}</strong> 名</span>
+      </div>
+      <div class="card-units">
+        ${unitChips}${eliteChip}
+        ${!unitChips && !eliteChip ? '<span style="color:var(--text-dim);font-size:12px">（無單位）</span>' : ''}
+      </div>
+      ${o.description ? `<div style="font-size:12px;color:var(--text-dim);margin-top:2px">${escHtml(o.description)}</div>` : ''}
+    </div>
+    <div class="card-actions">
+      <div class="action-row">
+        <label class="toggle" title="${o.enabled ? '停用' : '啟用'}">
+          <input type="checkbox" ${o.enabled ? 'checked' : ''} onchange="toggleEnabled('${o.id}')">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-dim btn-sm" onclick="openEditModal('${o.id}')">✏ 編輯</button>
+        <button class="btn btn-red btn-sm" onclick="deleteOffensive('${o.id}')">🗑</button>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-dim btn-sm" onclick="duplicateOffensive('${o.id}')">⧉ 複製</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateStats() {
+  document.getElementById('stat-count').textContent   = offensives.length;
+  document.getElementById('stat-enabled').textContent = offensives.filter(o => o.enabled).length;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  const inSync = stored && JSON.stringify(JSON.parse(stored).offensives) === JSON.stringify(offensives);
+  const statEl = document.getElementById('stat-storage');
+  statEl.textContent = inSync ? '✓ 已套用' : '⚠ 尚未套用';
+  statEl.style.color = inSync ? 'var(--green-light)' : 'var(--gold)';
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = '新增攻勢';
+  resetForm();
+  openModal();
+}
+
+function openEditModal(id) {
+  const o = offensives.find(x => x.id === id);
+  if (!o) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = '編輯攻勢';
+  populateForm(o);
+  openModal();
+}
+
+function saveOffensive() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('請填寫攻勢名稱', true); return; }
+
+  const units = {
+    bandit: parseInt(document.getElementById('u-bandit').value) || 0,
+    archer: parseInt(document.getElementById('u-archer').value) || 0,
+    heavy:  parseInt(document.getElementById('u-heavy').value)  || 0,
+    mage:   parseInt(document.getElementById('u-mage').value)   || 0,
+  };
+
+  const eliteEnabled = document.getElementById('e-enabled').checked;
+  const o = {
+    id: editingId || genId(),
+    name,
+    description: document.getElementById('f-desc').value.trim(),
+    enabled: editingId ? offensives.find(x => x.id === editingId)?.enabled ?? true : true,
+    triggerDay: parseInt(document.getElementById('f-day').value) || 1,
+    triggerTiming: document.querySelector('input[name=timing]:checked')?.value || 'night',
+    direction: document.querySelector('input[name=direction]:checked')?.value || 'random',
+    delaySeconds: parseInt(document.getElementById('f-delay').value) || 0,
+    spawnIntervalMs: parseInt(document.getElementById('f-interval').value) || 300,
+    units,
+    elite: {
+      enabled: eliteEnabled,
+      type: document.getElementById('e-type').value || 'random',
+      count: parseInt(document.getElementById('e-count').value) || 1,
+    },
+  };
+
+  if (editingId) {
+    const idx = offensives.findIndex(x => x.id === editingId);
+    if (idx !== -1) offensives[idx] = o;
+  } else {
+    offensives.push(o);
+  }
+
+  closeModal();
+  render();
+  showToast(editingId ? '已更新攻勢設定' : '已新增攻勢');
+}
+
+function deleteOffensive(id) {
+  if (!confirm('確定要刪除此攻勢？')) return;
+  offensives = offensives.filter(o => o.id !== id);
+  render();
+  showToast('已刪除');
+}
+
+function duplicateOffensive(id) {
+  const o = offensives.find(x => x.id === id);
+  if (!o) return;
+  const copy = JSON.parse(JSON.stringify(o));
+  copy.id = genId();
+  copy.name = copy.name + ' (複製)';
+  const idx = offensives.findIndex(x => x.id === id);
+  offensives.splice(idx + 1, 0, copy);
+  render();
+  showToast('已複製攻勢');
+}
+
+function toggleEnabled(id) {
+  const o = offensives.find(x => x.id === id);
+  if (o) { o.enabled = !o.enabled; updateStats(); }
+}
+
+function enableAll()  { offensives.forEach(o => o.enabled = true);  render(); }
+function disableAll() { offensives.forEach(o => o.enabled = false); render(); }
+function clearAll()   {
+  if (!confirm(`確定要清除全部 ${offensives.length} 個攻勢？`)) return;
+  offensives = [];
+  render();
+  showToast('已清除所有攻勢');
+}
+
+function sortCards() {
+  const timingOrder = { wave1: 0, wave2: 1, night: 2, any: 3 };
+  offensives.sort((a, b) => {
+    const da = a.triggerDay * 4 + (timingOrder[a.triggerTiming] || 0);
+    const db = b.triggerDay * 4 + (timingOrder[b.triggerTiming] || 0);
+    return da - db;
+  });
+  render();
+  showToast('已依天數排序');
+}
+
+// ── Apply / Export / Import ───────────────────────────────────────
+function applyToGame() {
+  const data = { version: '1.0', offensives };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  updateStats();
+  showToast('✓ 已套用至遊戲 LocalStorage！下一波開始時生效。');
+}
+
+function exportJSON() {
+  const data = { version: '1.0', exportedAt: new Date().toISOString(), offensives };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `offensives_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('已匯出 JSON 檔案');
+}
+
+function importJSON() {
+  document.getElementById('file-input').click();
+}
+
+function onFileLoad(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const imported = data.offensives || [];
+      if (!Array.isArray(imported)) throw new Error('格式錯誤');
+      if (confirm(`匯入 ${imported.length} 個攻勢？\n（會取代現有設定）`)) {
+        offensives = imported;
+        render();
+        showToast(`✓ 已匯入 ${imported.length} 個攻勢`);
+      }
+    } catch(err) {
+      alert('匯入失敗：' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  updatePreview();
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+}
+
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+function resetForm() {
+  document.getElementById('f-name').value  = '';
+  document.getElementById('f-desc').value  = '';
+  document.getElementById('f-day').value   = '3';
+  document.getElementById('f-delay').value = '5';
+  document.getElementById('f-interval').value = '300';
+  document.querySelector('input[name=timing][value=night]').checked    = true;
+  document.querySelector('input[name=direction][value=random]').checked = true;
+  ['bandit','archer','heavy','mage'].forEach(t => {
+    document.getElementById('u-' + t).value = '0';
+  });
+  document.getElementById('e-enabled').checked = false;
+  document.getElementById('e-type').value   = 'random';
+  document.getElementById('e-count').value  = '1';
+  document.getElementById('elite-fields').classList.add('hidden');
+}
+
+function populateForm(o) {
+  document.getElementById('f-name').value  = o.name || '';
+  document.getElementById('f-desc').value  = o.description || '';
+  document.getElementById('f-day').value   = o.triggerDay || 1;
+  document.getElementById('f-delay').value = o.delaySeconds || 0;
+  document.getElementById('f-interval').value = o.spawnIntervalMs || 300;
+  const timingEl = document.querySelector(`input[name=timing][value=${o.triggerTiming || 'night'}]`);
+  if (timingEl) timingEl.checked = true;
+  const dirEl = document.querySelector(`input[name=direction][value=${o.direction || 'random'}]`);
+  if (dirEl) dirEl.checked = true;
+  const units = o.units || {};
+  ['bandit','archer','heavy','mage'].forEach(t => {
+    document.getElementById('u-' + t).value = units[t] || 0;
+  });
+  const elite = o.elite || {};
+  document.getElementById('e-enabled').checked = !!elite.enabled;
+  document.getElementById('e-type').value   = elite.type  || 'random';
+  document.getElementById('e-count').value  = elite.count || 1;
+  document.getElementById('elite-fields').classList.toggle('hidden', !elite.enabled);
+}
+
+function toggleEliteFields() {
+  const enabled = document.getElementById('e-enabled').checked;
+  document.getElementById('elite-fields').classList.toggle('hidden', !enabled);
+  updatePreview();
+}
+
+function updatePreview() {
+  const bandit = parseInt(document.getElementById('u-bandit').value) || 0;
+  const archer = parseInt(document.getElementById('u-archer').value) || 0;
+  const heavy  = parseInt(document.getElementById('u-heavy').value)  || 0;
+  const mage   = parseInt(document.getElementById('u-mage').value)   || 0;
+  const total  = bandit + archer + heavy + mage;
+  const elite  = document.getElementById('e-enabled').checked
+    ? parseInt(document.getElementById('e-count').value) || 1 : 0;
+
+  const day     = parseInt(document.getElementById('f-day').value) || 1;
+  const timing  = document.querySelector('input[name=timing]:checked')?.value || 'night';
+  const waveNum = triggerWave(day, timing);
+  const waveStr = timing === 'any'
+    ? `第 ${day} 天所有波次（第 ${(day-1)*3+1}–${day*3} 波）`
+    : `第 ${day} 天 → 第 ${waveNum} 波`;
+
+  let parts = [];
+  if (bandit) parts.push(`強盜×${bandit}`);
+  if (archer) parts.push(`弓箭手×${archer}`);
+  if (heavy)  parts.push(`重甲兵×${heavy}`);
+  if (mage)   parts.push(`法師×${mage}`);
+  if (elite)  parts.push(`精英×${elite}`);
+
+  document.getElementById('preview-text').textContent =
+    total + elite > 0 ? parts.join('、') + `（共 ${total + elite} 名）` : '無單位';
+  document.getElementById('preview-wave').textContent = '觸發波次：' + waveStr;
+}
+
+// ── Utilities ─────────────────────────────────────────────────────
+function triggerWave(day, timing) {
+  const d = parseInt(day) || 1;
+  if (timing === 'wave1') return (d - 1) * 3 + 1;
+  if (timing === 'wave2') return (d - 1) * 3 + 2;
+  if (timing === 'any')   return (d - 1) * 3 + 1;  // first wave of day
+  return d * 3;  // night
+}
+
+function genId() {
+  return 'off_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer = null;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+  el.style.color = isError ? 'var(--red-light)' : 'var(--green-light)';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// Add listeners for live preview
+['f-day', 'f-delay', 'f-interval'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', updatePreview);
+});
+document.querySelectorAll('input[name=timing]').forEach(el => {
+  el.addEventListener('change', updatePreview);
+});
+</script>
+
+</body>
+</html>

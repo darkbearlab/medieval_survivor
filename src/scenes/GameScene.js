@@ -267,10 +267,14 @@ export class GameScene extends Phaser.Scene {
       this.buildingSystem.startPlacing(item.type, true, item.upgradeLevel || 0);
     };
     this._onUnitBuffsDirty = () => this._recalcUnitBonuses();
-    EventBus.on('build_select',         this._onBuildSelect);
-    EventBus.on('build_cancelled',      this._onBuildCancelled);
-    EventBus.on('free_build_use',       this._onFreeBuildUse);
-    EventBus.on('unit_buffs_dirty',     this._onUnitBuffsDirty);
+    this._onEditorOpened   = () => { if (!this.isPaused) { this.physics.pause(); this.isPaused = true; this._editorPaused = true; } };
+    this._onEditorClosed   = () => { if (this._editorPaused) { this.physics.resume(); this.isPaused = false; this._editorPaused = false; } };
+    EventBus.on('build_select',              this._onBuildSelect);
+    EventBus.on('build_cancelled',           this._onBuildCancelled);
+    EventBus.on('free_build_use',            this._onFreeBuildUse);
+    EventBus.on('unit_buffs_dirty',          this._onUnitBuffsDirty);
+    EventBus.on('offensive_editor_opened',   this._onEditorOpened);
+    EventBus.on('offensive_editor_closed',   this._onEditorClosed);
 
     // Periodic safety recalc (handles edge cases like building destruction timing)
     this._bonusRecalcTimer = 0;
@@ -1568,10 +1572,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   shutdown() {
-    EventBus.off('build_select',    this._onBuildSelect);
-    EventBus.off('build_cancelled', this._onBuildCancelled);
-    EventBus.off('free_build_use',  this._onFreeBuildUse);
-    EventBus.off('unit_buffs_dirty', this._onUnitBuffsDirty);
+    EventBus.off('build_select',            this._onBuildSelect);
+    EventBus.off('build_cancelled',         this._onBuildCancelled);
+    EventBus.off('free_build_use',          this._onFreeBuildUse);
+    EventBus.off('unit_buffs_dirty',        this._onUnitBuffsDirty);
+    EventBus.off('offensive_editor_opened', this._onEditorOpened);
+    EventBus.off('offensive_editor_closed', this._onEditorClosed);
     if (this.dayNightSystem) this.dayNightSystem.destroy();
     EventBus.removeAllListeners();
   }
