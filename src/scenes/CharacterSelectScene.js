@@ -237,8 +237,9 @@ export class CharacterSelectScene extends Phaser.Scene {
     // ── Starting bonus ────────────────────────────────────────────────────────
     const bonus = cfg.STARTING_BONUS || {};
     const bonusLines = [];
-    if (bonus.maxFood) bonusLines.push(`🍞 糧食上限 +${bonus.maxFood}`);
-    if (bonus.food)    bonusLines.push(`🍞 初始糧食 +${bonus.food}`);
+    if (bonus.soldiers) bonusLines.push(`⚔ 起始士兵 ×${bonus.soldiers}`);
+    if (bonus.maxFood)  bonusLines.push(`🍞 糧食上限 +${bonus.maxFood}`);
+    if (bonus.food)     bonusLines.push(`🍞 初始糧食 +${bonus.food}`);
     if (bonus.gold)    bonusLines.push(`💰 初始金幣 +${bonus.gold}`);
     if (bonus.wood)  bonusLines.push(`🪵 初始木材 +${bonus.wood}`);
     if (bonus.stone) bonusLines.push(`🪨 初始石材 +${bonus.stone}`);

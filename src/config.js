@@ -239,6 +239,16 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       AOE:         true,
       AOE_RADIUS:  80,
     },
+    iron_spear: {
+      name: '鐵槍',
+      desc: '中近距離突刺，射速穩定但威力略低',
+      icon: '🗡',
+      RANGE:       150,
+      RATE:        950,
+      DAMAGE_MULT: 0.85,
+      AOE:         false,
+      AOE_RADIUS:  0,
+    },
     royal_scepter: {
       name: '皇家權杖',
       desc: '優雅的中距離攻擊，命中時有 20% 機率使敵人短暫減速',
@@ -369,8 +379,8 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       DEFENSE_PCT:     0,
       TEXTURE:         'player_banner',
       ACCENT:          0xDDCC22,
-      STARTING_WEAPON: 'hunter_bow',
-      STARTING_BONUS:  { upgrades: ['soldier_aura_atk', 'soldier_aura_def', 'soldier_aura_spd'] },
+      STARTING_WEAPON: 'iron_spear',
+      STARTING_BONUS:  { soldiers: 10, upgrades: ['soldier_aura_atk', 'soldier_aura_def', 'soldier_aura_spd'] },
     },
   },
 };

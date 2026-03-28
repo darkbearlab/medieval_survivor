@@ -12,6 +12,7 @@ import { Boss }              from '../entities/Boss.js';
 import { WeaponMount }      from '../entities/WeaponMount.js';
 import { Chest }            from '../entities/Chest.js';
 import { SoundManager }     from '../utils/SoundManager.js';
+import { Soldier }          from '../entities/Soldier.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -325,6 +326,11 @@ export class GameScene extends Phaser.Scene {
     this._chests         = [];
     this._chestProgress  = new Map();   // chest → ms held
     this._chestGraphics  = this.add.graphics().setDepth(18);
+
+    // --- Soldier aura visual ---
+    this._auraGraphics     = this.add.graphics().setDepth(9);
+    this._buffDotGraphics  = this.add.graphics().setDepth(15);
+    this._auraPulse        = 0;
 
     // --- Weapon mounts (boss kill upgrades) ---
     this._weaponMounts = [];
@@ -691,6 +697,8 @@ export class GameScene extends Phaser.Scene {
       proj.setTint(0xCC44FF);   // mage — purple
     } else if (fromPlayer && this.player && this.player.weaponKey === 'royal_scepter') {
       proj.setTint(0xFF88CC);   // princess — pink
+    } else if (fromPlayer && this.player && this.player.weaponKey === 'iron_spear') {
+      proj.setTint(0xCCDDEE);   // banner — silvery steel
     } else if (fromPlayer && this.player && this.player.defensePct > 0) {
       proj.setTint(0xFF6633);   // warrior — red
     }
@@ -815,6 +823,37 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   //  Soldier rally
   // ─────────────────────────────────────────────
+
+  _updateAuraVisual(delta) {
+    const p = this.player;
+    const hasAura = p && !p.isDead && (p._auraAtk || p._auraDef || p._auraSpd);
+
+    this._auraGraphics.clear();
+    this._buffDotGraphics.clear();
+
+    if (!hasAura) return;
+
+    // Pulsing aura ring around player
+    this._auraPulse = (this._auraPulse + delta * 0.0025) % (Math.PI * 2);
+    const baseAlpha  = 0.18 + 0.10 * Math.sin(this._auraPulse);
+    const innerAlpha = 0.08 + 0.06 * Math.sin(this._auraPulse + 1);
+    const AURA_R = 140;
+
+    this._auraGraphics.lineStyle(3, 0xFFDD44, baseAlpha);
+    this._auraGraphics.strokeCircle(p.x, p.y, AURA_R);
+    this._auraGraphics.lineStyle(2, 0xFFEE88, innerAlpha);
+    this._auraGraphics.strokeCircle(p.x, p.y, AURA_R - 10);
+    this._auraGraphics.lineStyle(1, 0xFFDD44, innerAlpha * 0.5);
+    this._auraGraphics.strokeCircle(p.x, p.y, AURA_R + 8);
+
+    // Gold dot above each buffed soldier / mage
+    for (const unit of [...this.buildingSystem.soldiers, ...this.buildingSystem.alliedMages]) {
+      if (unit.dead || !unit.sprite?.active) continue;
+      const pulse = 0.7 + 0.3 * Math.sin(this._auraPulse * 2);
+      this._buffDotGraphics.fillStyle(0xFFDD44, pulse);
+      this._buffDotGraphics.fillCircle(unit.sprite.x, unit.sprite.y - 18, 3);
+    }
+  }
 
   _toggleSoldierRally() {
     this.soldierRallyMode = !this.soldierRallyMode;
@@ -948,6 +987,9 @@ export class GameScene extends Phaser.Scene {
 
     // Player movement
     this.player.update(this.cursors);
+
+    // Soldier aura visual + buff dot indicators
+    this._updateAuraVisual(delta);
 
     // Auto-attack nearest enemy — uses character-specific range, rate, damage
     if (!this.player.isDead && time > this.nextAttackTime) {
@@ -1294,6 +1336,22 @@ export class GameScene extends Phaser.Scene {
     if (Array.isArray(bonus.upgrades)) {
       for (const upKey of bonus.upgrades) {
         this._applyUpgradeEffect(upKey);
+      }
+    }
+
+    // ── Starting soldiers (e.g. { soldiers: 10 }) ────────────────────────────
+    // Spawned as deployed (always follow player), no barracks anchor — won't respawn.
+    if (bonus.soldiers) {
+      const count = bonus.soldiers;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        const sx = this.player.x + Math.cos(angle) * 90;
+        const sy = this.player.y + Math.sin(angle) * 90;
+        const type = i % 3 === 0 ? 'ranged' : 'melee';
+        const soldier = new Soldier(this, sx, sy, type, null);
+        soldier.deployed = true;
+        this.soldiersGroup.add(soldier.sprite);
+        this.buildingSystem.soldiers.push(soldier);
       }
     }
   }
