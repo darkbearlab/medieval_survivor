@@ -222,6 +222,10 @@ export class BuildingSystem {
     for (const c of this.castles) {
       if (!c.dead) c.update(time);
     }
+    // Update orphaned soldiers (no barracks parent — e.g. banner bearer's starting troops)
+    for (const s of this.soldiers) {
+      if (!s.dead && !s.barracks) s.update(time);
+    }
     // Prune dead units from global lists
     this.soldiers    = this.soldiers.filter(s => !s.dead);
     this.alliedMages = this.alliedMages.filter(m => !m.dead);
