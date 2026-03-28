@@ -115,6 +115,7 @@ export class MenuScene extends Phaser.Scene {
     const pnotes = [
       '📋  最新調整內容',
       '',
+	  '▸ 修改人物設計邏輯',
       '▸ 食堂 → 旅店：現可對附近士兵和法師回血',
       '▸ 士兵 / 法師以自身視野判定追擊，',
       '   不再因建築視野而與弓箭手跳探戈',
