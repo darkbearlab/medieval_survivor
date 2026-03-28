@@ -355,7 +355,7 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       TEXTURE:         'player_princess',
       ACCENT:          0xFF88CC,
       STARTING_WEAPON: 'royal_scepter',
-      STARTING_BONUS:  { food: 30, freeBuildings: ['castle'] },
+      STARTING_BONUS:  { maxFood: 20, food: 30, freeBuildings: ['castle'] },
     },
   },
 };

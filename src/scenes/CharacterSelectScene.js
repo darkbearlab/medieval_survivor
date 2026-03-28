@@ -160,35 +160,36 @@ export class CharacterSelectScene extends Phaser.Scene {
     // Layout anchors
     const panelCX = LIST_W + (W - LIST_W) / 2;   // center of right panel
     const contentX = LIST_W + 50;                  // left edge of content
-    const spriteX  = contentX + 60;               // sprite center
-    const infoX    = contentX + 140;              // text start (right of sprite)
+    const spriteX  = contentX + 60;               // sprite center x
+    const infoX    = contentX + 150;              // text start (right of sprite)
     const barX     = contentX + 10;               // bar left edge
     const barW     = 260;
 
     const add = (obj) => { this._detailContainer.add(obj); return obj; };
 
-    // ── Large character sprite ───────────────────────────────────────────────
-    add(this.add.image(spriteX, 115, cfg.TEXTURE).setScale(5));
+    // ── Large character sprite (scale 4 = 128px, center y=85 → bottom y=149) ─
+    add(this.add.image(spriteX, 85, cfg.TEXTURE).setScale(4));
 
     // ── Name ─────────────────────────────────────────────────────────────────
-    add(this.add.text(infoX, 60, cfg.name, {
+    add(this.add.text(infoX, 48, cfg.name, {
       fontSize: '40px', fontFamily: 'Georgia, serif',
       color: accentHex, stroke: '#000000', strokeThickness: 4,
     }));
 
     // ── Tagline ───────────────────────────────────────────────────────────────
-    add(this.add.text(infoX, 112, cfg.tagline, {
+    add(this.add.text(infoX, 100, cfg.tagline, {
       fontSize: '14px', color: '#778899',
     }));
 
     // ── Weapon ───────────────────────────────────────────────────────────────
-    add(this.add.text(infoX, 134, `${wCfg.icon} ${wCfg.name} — ${wCfg.desc}`, {
+    add(this.add.text(infoX, 122, `${wCfg.icon} ${wCfg.name} — ${wCfg.desc}`, {
       fontSize: '12px', color: accentHex,
     }));
 
     // ── Stat section header ───────────────────────────────────────────────────
+    // sprite bottom = 85 + 64 = 149; header at 168; bars from 190 — no overlap
     const barH     = 10;
-    const barStartY = 186;
+    const barStartY = 190;
     add(this.add.text(barX, barStartY - 22, '屬性', {
       fontSize: '12px', color: '#FFD700',
     }));
@@ -236,8 +237,9 @@ export class CharacterSelectScene extends Phaser.Scene {
     // ── Starting bonus ────────────────────────────────────────────────────────
     const bonus = cfg.STARTING_BONUS || {};
     const bonusLines = [];
-    if (bonus.food)  bonusLines.push(`🍞 初始糧食 +${bonus.food}`);
-    if (bonus.gold)  bonusLines.push(`💰 初始金幣 +${bonus.gold}`);
+    if (bonus.maxFood) bonusLines.push(`🍞 糧食上限 +${bonus.maxFood}`);
+    if (bonus.food)    bonusLines.push(`🍞 初始糧食 +${bonus.food}`);
+    if (bonus.gold)    bonusLines.push(`💰 初始金幣 +${bonus.gold}`);
     if (bonus.wood)  bonusLines.push(`🪵 初始木材 +${bonus.wood}`);
     if (bonus.stone) bonusLines.push(`🪨 初始石材 +${bonus.stone}`);
     if (Array.isArray(bonus.freeBuildings))

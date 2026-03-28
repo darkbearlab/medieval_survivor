@@ -1260,16 +1260,17 @@ export class GameScene extends Phaser.Scene {
     const bonus   = charCfg.STARTING_BONUS || {};
 
     // ── Resources ────────────────────────────────────────────────────────────
-    if (bonus.gold)  this.economy.resources.gold  += bonus.gold;
-    if (bonus.wood)  this.economy.resources.wood  += bonus.wood;
-    if (bonus.stone) this.economy.resources.stone += bonus.stone;
+    if (bonus.maxFood) this.economy.resources.maxFood += bonus.maxFood;
+    if (bonus.gold)    this.economy.resources.gold    += bonus.gold;
+    if (bonus.wood)    this.economy.resources.wood    += bonus.wood;
+    if (bonus.stone)   this.economy.resources.stone   += bonus.stone;
     if (bonus.food) {
       this.economy.resources.food = Math.min(
         this.economy.resources.food + bonus.food,
         this.economy.resources.maxFood
       );
     }
-    if (bonus.gold || bonus.wood || bonus.stone || bonus.food) {
+    if (bonus.maxFood || bonus.gold || bonus.wood || bonus.stone || bonus.food) {
       EventBus.emit('resources_updated', this.economy.resources);
     }
 

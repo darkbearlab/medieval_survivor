@@ -13,6 +13,7 @@ const gameConfig = {
   width: CONFIG.WIDTH,
   height: CONFIG.HEIGHT,
   backgroundColor: '#1a1a2e',
+  pixelArt: true,
   physics: {
     default: 'arcade',
     arcade: {
