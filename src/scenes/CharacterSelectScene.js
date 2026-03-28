@@ -1,12 +1,19 @@
 import { CONFIG } from '../config.js';
 
-// Helper: read a character's starting weapon config
 function weapCfg(charKey) {
   const wKey = CONFIG.CHARACTERS[charKey]?.STARTING_WEAPON || 'hunter_bow';
   return CONFIG.WEAPONS[wKey] || CONFIG.WEAPONS.hunter_bow;
 }
 
-const CHAR_KEYS = ['warrior', 'ranger', 'mage', 'princess'];
+export const CHAR_KEYS = ['warrior', 'ranger', 'mage', 'princess'];
+
+const LIST_W   = 220;   // left panel width
+const CARD_H   = 90;    // list item height
+const CARD_GAP = 6;     // gap between items
+const LIST_TOP = 52;    // y where list starts (below panel title)
+
+// Building name lookup for bonus display
+const BNAME = { castle: '城堡', tower: '箭塔', barracks: '兵營', mage_tower: '法師塔' };
 
 export class CharacterSelectScene extends Phaser.Scene {
   constructor() {
@@ -15,65 +22,82 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   create() {
     const { WIDTH: W, HEIGHT: H } = CONFIG;
-    this._selected = 'ranger';
+    this._selected = null;
     this._gameMode = 'timed';
-    this._cardEls  = {};   // key → { bg, border, details[] }
+    this._listY    = 0;
 
-    // Background
+    // ── Background ───────────────────────────────────────────────────────────
     this.add.rectangle(W / 2, H / 2, W, H, 0x0d1b2a);
 
-    // Title
-    this.add.text(W / 2, 52, '選擇角色', {
-      fontSize: '38px', fontFamily: 'Georgia, serif',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 4,
-    }).setOrigin(0.5);
+    // ── Left panel ───────────────────────────────────────────────────────────
+    this.add.rectangle(LIST_W / 2, H / 2, LIST_W, H, 0x080f18);
+    this.add.rectangle(LIST_W, H / 2, 2, H, 0x1a3040);
+    this.add.text(LIST_W / 2, 28, '選擇角色', {
+      fontSize: '17px', fontFamily: 'Georgia, serif',
+      color: '#FFD700', stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(10);
 
-    this.add.text(W / 2, 92, '將滑鼠移到角色上查看詳情，點擊選擇', {
-      fontSize: '14px', color: '#555555',
-    }).setOrigin(0.5);
+    // ── Scrollable list ──────────────────────────────────────────────────────
+    this._listContainer = this.add.container(0, 0).setDepth(5);
+    this._cardObjs = {};
+    this._buildList();
 
-    // Character cards — evenly spaced for up to 4 characters
-    const cardSpacing = 260;
-    const totalW = cardSpacing * (CHAR_KEYS.length - 1);
-    const cardCentersX = CHAR_KEYS.map((_, i) => W / 2 - totalW / 2 + i * cardSpacing);
-    CHAR_KEYS.forEach((key, i) => {
-      this._buildCard(cardCentersX[i], 330, key);
+    // Mask: clips list to the area below the title
+    const maskGfx = this.make.graphics({ add: false });
+    maskGfx.fillRect(0, LIST_TOP, LIST_W, H - LIST_TOP);
+    this._listContainer.setMask(maskGfx.createGeometryMask());
+
+    // Scroll: mouse wheel
+    this.input.on('wheel', (_p, _go, _dx, dy) => {
+      if (this.input.activePointer.x < LIST_W) this._scroll(dy * 0.6);
     });
 
-    // ── Mode selection ──────────────────────────────────────────────────────
-    const modeY    = 530;
-    const timedDur = CONFIG.GAME_MODES.TIMED.DURATION;
-    const timedMin = Math.floor(timedDur / 60);
+    // Scroll: drag
+    let dragY0 = null, scrollY0 = 0;
+    this.input.on('pointerdown', p => {
+      if (p.x < LIST_W) { dragY0 = p.y; scrollY0 = this._listY; }
+    });
+    this.input.on('pointermove', p => {
+      if (dragY0 !== null && p.isDown) this._setScroll(scrollY0 - (p.y - dragY0));
+    });
+    this.input.on('pointerup', () => { dragY0 = null; });
+
+    // ── Right panel (rebuilt on each selection) ───────────────────────────────
+    this._detailContainer = this.add.container(0, 0).setDepth(5);
+
+    // ── Mode selection ────────────────────────────────────────────────────────
+    const panelCX  = LIST_W + (W - LIST_W) / 2;
+    const modeY    = H - 112;
+    const timedMin = Math.floor(CONFIG.GAME_MODES.TIMED.DURATION / 60);
     const modeLabels = {
       timed:   `⏱  限時 ${timedMin} 分鐘`,
       endless: '∞  無盡模式',
     };
-
     const _makeModeBtn = (cx, modeKey) => {
-      const bg  = this.add.rectangle(cx, modeY, 200, 40, 0x1a2a1a)
-        .setStrokeStyle(2, 0x334433).setInteractive({ useHandCursor: true });
+      const bg  = this.add.rectangle(cx, modeY, 200, 38, 0x1a2a1a)
+        .setStrokeStyle(2, 0x334433).setInteractive({ useHandCursor: true }).setDepth(10);
       const txt = this.add.text(cx, modeY, modeLabels[modeKey], {
-        fontSize: '14px', color: '#88CC88',
-      }).setOrigin(0.5);
+        fontSize: '13px', color: '#88CC88',
+      }).setOrigin(0.5).setDepth(11);
       bg.on('pointerdown', () => this._selectMode(modeKey));
       return { bg, txt };
     };
-
     this._modeBtns = {
-      timed:   _makeModeBtn(W / 2 - 110, 'timed'),
-      endless: _makeModeBtn(W / 2 + 110, 'endless'),
+      timed:   _makeModeBtn(panelCX - 108, 'timed'),
+      endless: _makeModeBtn(panelCX + 108, 'endless'),
     };
     this._selectMode('timed');
 
-    // Start button
-    const startBg = this.add.rectangle(W / 2, 594, 240, 50, 0x8B0000)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(W / 2, 594, '開始冒險', {
+    // ── Start button ──────────────────────────────────────────────────────────
+    const startBg = this.add.rectangle(panelCX, H - 58, 240, 50, 0x8B0000)
+      .setInteractive({ useHandCursor: true }).setDepth(10);
+    this.add.text(panelCX, H - 58, '開始冒險', {
       fontSize: '26px', color: '#FFD700',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(11);
     startBg.on('pointerover', () => startBg.setFillStyle(0xAA1111));
     startBg.on('pointerout',  () => startBg.setFillStyle(0x8B0000));
     startBg.on('pointerdown', () => {
+      if (!this._selected) return;
       this.scene.start('GameScene', {
         characterKey: this._selected,
         gameMode:     this._gameMode,
@@ -82,133 +106,184 @@ export class CharacterSelectScene extends Phaser.Scene {
     });
     this.tweens.add({ targets: startBg, scaleX: 1.02, scaleY: 1.02, yoyo: true, repeat: -1, duration: 900 });
 
-    // Back button
-    const backTxt = this.add.text(W / 2, 645, '← 返回主選單', {
+    // ── Back button ───────────────────────────────────────────────────────────
+    const backTxt = this.add.text(panelCX, H - 20, '← 返回主選單', {
       fontSize: '14px', color: '#555555',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(10);
     backTxt.on('pointerover', () => backTxt.setColor('#888888'));
     backTxt.on('pointerout',  () => backTxt.setColor('#555555'));
     backTxt.on('pointerdown', () => this.scene.start('MenuScene'));
 
-    // Select ranger by default (show its details immediately)
+    // Default selection
     this._selectCard('ranger');
   }
 
-  _buildCard(cx, cy, key) {
-    const cfg   = CONFIG.CHARACTERS[key];
-    const cardW = 240, cardH = 390;
+  // ── Build the scrollable character list ─────────────────────────────────────
+  _buildList() {
+    CHAR_KEYS.forEach((key, i) => {
+      const cfg = CONFIG.CHARACTERS[key];
+      const cy  = LIST_TOP + i * (CARD_H + CARD_GAP) + CARD_H / 2;
+      const accentHex = '#' + cfg.ACCENT.toString(16).padStart(6, '0');
+
+      const bg = this.add.rectangle(LIST_W / 2, cy, LIST_W - 10, CARD_H, 0x111822)
+        .setInteractive({ useHandCursor: true });
+      const border = this.add.rectangle(LIST_W / 2, cy, LIST_W - 10, CARD_H, 0x000000, 0)
+        .setStrokeStyle(2, 0x222233);
+      const sprite = this.add.image(38, cy, cfg.TEXTURE).setScale(2.5);
+      const name   = this.add.text(74, cy - 14, cfg.name, {
+        fontSize: '15px', fontFamily: 'Georgia, serif',
+        color: accentHex, stroke: '#000000', strokeThickness: 2,
+      });
+      const tag = this.add.text(74, cy + 8, cfg.tagline, {
+        fontSize: '10px', color: '#556677',
+        wordWrap: { width: 130 },
+      });
+
+      bg.on('pointerover', () => { if (this._selected !== key) bg.setFillStyle(0x161f2e); });
+      bg.on('pointerout',  () => { if (this._selected !== key) bg.setFillStyle(0x111822); });
+      bg.on('pointerdown', () => this._selectCard(key));
+
+      this._listContainer.add([bg, border, sprite, name, tag]);
+      this._cardObjs[key] = { bg, border };
+    });
+  }
+
+  // ── Rebuild the right-panel detail view for a given character ─────────────
+  _refreshDetail(key) {
+    this._detailContainer.removeAll(true);
+
+    const cfg = CONFIG.CHARACTERS[key];
+    const wCfg = weapCfg(key);
+    const { WIDTH: W, HEIGHT: H } = CONFIG;
     const accentHex = '#' + cfg.ACCENT.toString(16).padStart(6, '0');
 
-    // ── Permanent elements ──────────────────────────────────────────────────
-    const bg = this.add.rectangle(cx, cy, cardW, cardH, 0x111822)
-      .setInteractive({ useHandCursor: true });
+    // Layout anchors
+    const panelCX = LIST_W + (W - LIST_W) / 2;   // center of right panel
+    const contentX = LIST_W + 50;                  // left edge of content
+    const spriteX  = contentX + 60;               // sprite center
+    const infoX    = contentX + 140;              // text start (right of sprite)
+    const barX     = contentX + 10;               // bar left edge
+    const barW     = 260;
 
-    const border = this.add.rectangle(cx, cy, cardW, cardH, 0x000000, 0)
-      .setStrokeStyle(2, 0x333344);
+    const add = (obj) => { this._detailContainer.add(obj); return obj; };
 
-    // Sprite sits at the vertical center of the compact view
-    const sprite = this.add.image(cx, cy - 60, cfg.TEXTURE).setScale(3);
+    // ── Large character sprite ───────────────────────────────────────────────
+    add(this.add.image(spriteX, 115, cfg.TEXTURE).setScale(5));
 
-    // Name always visible
-    const nameText = this.add.text(cx, cy + 50, cfg.name, {
-      fontSize: '22px', fontFamily: 'Georgia, serif',
-      color: accentHex, stroke: '#000000', strokeThickness: 2,
-    }).setOrigin(0.5);
+    // ── Name ─────────────────────────────────────────────────────────────────
+    add(this.add.text(infoX, 60, cfg.name, {
+      fontSize: '40px', fontFamily: 'Georgia, serif',
+      color: accentHex, stroke: '#000000', strokeThickness: 4,
+    }));
 
-    // ── Detail elements (hidden by default) ────────────────────────────────
-    const details = [];
+    // ── Tagline ───────────────────────────────────────────────────────────────
+    add(this.add.text(infoX, 112, cfg.tagline, {
+      fontSize: '14px', color: '#778899',
+    }));
 
-    const tagline = this.add.text(cx, cy + 78, cfg.tagline, {
-      fontSize: '12px', color: '#888888',
-    }).setOrigin(0.5).setVisible(false);
-    details.push(tagline);
+    // ── Weapon ───────────────────────────────────────────────────────────────
+    add(this.add.text(infoX, 134, `${wCfg.icon} ${wCfg.name} — ${wCfg.desc}`, {
+      fontSize: '12px', color: accentHex,
+    }));
 
-    // Weapon tag (shown below tagline)
-    const wCfg = weapCfg(key);
-    const weapTag = this.add.text(cx, cy + 96, `${wCfg.icon} ${wCfg.name}`, {
-      fontSize: '12px', color: '#' + cfg.ACCENT.toString(16).padStart(6,'0'),
-    }).setOrigin(0.5).setVisible(false);
-    details.push(weapTag);
+    // ── Stat section header ───────────────────────────────────────────────────
+    const barH     = 10;
+    const barStartY = 186;
+    add(this.add.text(barX, barStartY - 22, '屬性', {
+      fontSize: '12px', color: '#FFD700',
+    }));
 
-    // Stat bars
+    // ── Stat bars ─────────────────────────────────────────────────────────────
     const stats = [
       { label: 'HP',   pct: cfg.HP / 180 },
       { label: '速度', pct: cfg.SPEED / 180 },
       { label: '射程', pct: wCfg.RANGE / 260 },
       { label: wCfg.AOE ? 'AoE' : cfg.DEFENSE_PCT > 0 ? '減傷' : '防禦',
-        pct:     wCfg.AOE ? 1.0 : cfg.DEFENSE_PCT > 0 ? cfg.DEFENSE_PCT / 0.30 : 0,
+        pct:     wCfg.AOE ? 1.0  : cfg.DEFENSE_PCT > 0 ? cfg.DEFENSE_PCT / 0.30 : 0,
         special: wCfg.AOE ? '✓'  : cfg.DEFENSE_PCT > 0 ? `${Math.round(cfg.DEFENSE_PCT * 100)}%` : '─' },
     ];
 
-    const barW = 120, barH = 8;
-    const barStartY = cy + 126;  // shifted down to make room for weapon tag at cy+96
     stats.forEach((st, i) => {
-      const ry = barStartY + i * 26;
+      const ry = barStartY + i * 28;
+      const fillW = barW * Math.min(1, st.pct);
 
-      const lbl = this.add.text(cx - barW / 2 - 4, ry, st.label, {
-        fontSize: '11px', color: '#666666',
-      }).setOrigin(1, 0.5).setVisible(false);
+      add(this.add.text(barX - 6, ry, st.label, {
+        fontSize: '12px', color: '#778899',
+      }).setOrigin(1, 0.5));
 
-      const barBg = this.add.rectangle(cx + 8, ry, barW, barH, 0x222222)
-        .setOrigin(0, 0.5).setVisible(false);
+      add(this.add.rectangle(barX + barW / 2, ry, barW, barH, 0x151e2a)
+        .setStrokeStyle(1, 0x2a3a4a));
 
-      const fillColor = Phaser.Display.Color.Interpolate.ColorWithColor(
-        Phaser.Display.Color.ValueToColor(0x224422),
-        Phaser.Display.Color.ValueToColor(cfg.ACCENT),
-        100, Math.round(Math.min(1, st.pct) * 100)
-      );
-      const fillHex = Phaser.Display.Color.GetColor(fillColor.r, fillColor.g, fillColor.b);
-      const barFill = this.add.rectangle(cx + 8, ry, barW * Math.min(1, st.pct), barH, fillHex)
-        .setOrigin(0, 0.5).setVisible(false);
-
-      details.push(lbl, barBg, barFill);
+      if (fillW > 0) {
+        const fc = Phaser.Display.Color.Interpolate.ColorWithColor(
+          Phaser.Display.Color.ValueToColor(0x224422),
+          Phaser.Display.Color.ValueToColor(cfg.ACCENT),
+          100, Math.round(Math.min(1, st.pct) * 100)
+        );
+        add(this.add.rectangle(
+          barX + fillW / 2, ry, fillW, barH,
+          Phaser.Display.Color.GetColor(fc.r, fc.g, fc.b)
+        ));
+      }
 
       if (st.special) {
-        const spTxt = this.add.text(cx + 8 + barW + 5, ry, st.special, {
-          fontSize: '11px', color: '#BBBBBB',
-        }).setOrigin(0, 0.5).setVisible(false);
-        details.push(spTxt);
+        add(this.add.text(barX + barW + 8, ry, st.special, {
+          fontSize: '12px', color: '#BBBBBB',
+        }).setOrigin(0, 0.5));
       }
     });
 
-    const lore = this.add.text(cx, cy + 238, cfg.lore, {
-      fontSize: '11px', color: '#444444',
-    }).setOrigin(0.5).setVisible(false);
-    details.push(lore);
+    // ── Starting bonus ────────────────────────────────────────────────────────
+    const bonus = cfg.STARTING_BONUS || {};
+    const bonusLines = [];
+    if (bonus.food)  bonusLines.push(`🍞 初始糧食 +${bonus.food}`);
+    if (bonus.gold)  bonusLines.push(`💰 初始金幣 +${bonus.gold}`);
+    if (bonus.wood)  bonusLines.push(`🪵 初始木材 +${bonus.wood}`);
+    if (bonus.stone) bonusLines.push(`🪨 初始石材 +${bonus.stone}`);
+    if (Array.isArray(bonus.freeBuildings))
+      bonus.freeBuildings.forEach(b => bonusLines.push(`🏗 免費 ${BNAME[b] || b}`));
+    if (Array.isArray(bonus.upgrades))
+      bonus.upgrades.forEach(u => {
+        const up = CONFIG.WEAPON_UPGRADES[u];
+        bonusLines.push(`⬆ 起始升級: ${up ? up.name : u}`);
+      });
 
-    // ── Interaction ─────────────────────────────────────────────────────────
-    bg.on('pointerover', () => {
-      if (this._selected !== key) bg.setFillStyle(0x161f2e);
-      details.forEach(e => e.setVisible(true));
-    });
-    bg.on('pointerout', () => {
-      if (this._selected !== key) {
-        bg.setFillStyle(0x111822);
-        details.forEach(e => e.setVisible(false));
-      }
-    });
-    bg.on('pointerdown', () => this._selectCard(key));
+    if (bonusLines.length > 0) {
+      const bonusY = barStartY + stats.length * 28 + 18;
+      add(this.add.text(barX, bonusY, '起始加成', {
+        fontSize: '12px', color: '#FFD700',
+      }));
+      bonusLines.forEach((line, i) => {
+        add(this.add.text(barX + 8, bonusY + 20 + i * 20, line, {
+          fontSize: '12px', color: '#CCAA44',
+        }));
+      });
+    }
 
-    this._cardEls[key] = { bg, border, details };
+    // ── Lore ─────────────────────────────────────────────────────────────────
+    add(this.add.text(panelCX, H - 152, `"${cfg.lore}"`, {
+      fontSize: '13px', color: '#445566',
+      fontStyle: 'italic',
+    }).setOrigin(0.5));
   }
 
+  // ── Select a character ────────────────────────────────────────────────────
   _selectCard(key) {
-    // Hide details on previously selected card (unless mouse is still over it)
-    if (this._selected && this._cardEls[this._selected] && this._selected !== key) {
-      const prev = this._cardEls[this._selected];
+    if (this._selected && this._cardObjs[this._selected]) {
+      const prev = this._cardObjs[this._selected];
       prev.bg.setFillStyle(0x111822);
-      prev.border.setStrokeStyle(2, 0x333344);
-      prev.details.forEach(e => e.setVisible(false));
+      prev.border.setStrokeStyle(2, 0x222233);
     }
-    // Highlight new selection and show its details
     this._selected = key;
     const cfg = CONFIG.CHARACTERS[key];
-    const cur = this._cardEls[key];
+    const cur = this._cardObjs[key];
     cur.bg.setFillStyle(0x1a2a3a);
     cur.border.setStrokeStyle(3, cfg.ACCENT);
-    cur.details.forEach(e => e.setVisible(true));
+
+    this._refreshDetail(key);
   }
 
+  // ── Select a game mode ────────────────────────────────────────────────────
   _selectMode(modeKey) {
     this._gameMode = modeKey;
     for (const [k, btn] of Object.entries(this._modeBtns)) {
@@ -220,5 +295,19 @@ export class CharacterSelectScene extends Phaser.Scene {
         btn.txt.setColor('#668866');
       }
     }
+  }
+
+  // ── Scroll helpers ────────────────────────────────────────────────────────
+  _scroll(delta) {
+    this._setScroll(this._listY + delta);
+  }
+
+  _setScroll(val) {
+    const { HEIGHT: H } = CONFIG;
+    const totalH  = CHAR_KEYS.length * (CARD_H + CARD_GAP);
+    const visibleH = H - LIST_TOP;
+    const maxScroll = Math.max(0, totalH - visibleH);
+    this._listY = Phaser.Math.Clamp(val, 0, maxScroll);
+    this._listContainer.y = -this._listY;
   }
 }
