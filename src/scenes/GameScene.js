@@ -1273,10 +1273,17 @@ export class GameScene extends Phaser.Scene {
 
     // ── Free buildings (e.g. { freeBuildings: ['castle', 'tower'] }) ─────────
     if (Array.isArray(bonus.freeBuildings)) {
+      const META = {
+        castle:    { name: '🏰 城堡',   desc: '射箭＋生兵＋召法師（免費放置）', texKey: 'building_castle', icon: '🏰' },
+        tower:     { name: '箭塔',       desc: '免費放置箭塔',                    texKey: 'building_tower',  icon: '🏹' },
+        barracks:  { name: '兵營',       desc: '免費放置兵營',                    texKey: 'building_barracks', icon: '⚔' },
+        mage_tower:{ name: '法師塔',     desc: '免費放置法師塔',                  texKey: 'building_mage_tower', icon: '🔮' },
+      };
       for (const bType of bonus.freeBuildings) {
-        this.buildingSystem.addFreeBuilding(bType);
+        const m = META[bType] || { name: bType, desc: '免費放置', texKey: `building_${bType}`, icon: '🏗' };
+        this._freeBuildingInventory.push({ type: bType, upgradeLevel: 0, ...m });
       }
-      EventBus.emit('free_buildings_updated', this.buildingSystem.getFreeBuildings());
+      EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
     }
 
     // ── Pre-applied upgrades (e.g. { upgrades: ['dual_shot'] }) ─────────────
