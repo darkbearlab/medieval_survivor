@@ -31,6 +31,7 @@ export class BootScene extends Phaser.Scene {
     this._genPlayerWarrior();
     this._genPlayerMage();
     this._genPlayerPrincess();
+    this._genPlayerBanner();
     this._genChest();
     this._genGranary();
     this._genCastle();
@@ -767,6 +768,44 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(8, 30, 5, 2);
     g.fillRect(19, 30, 5, 2);
     g.generateTexture('player_princess', 32, 32);
+    g.destroy();
+  }
+
+  _genPlayerBanner() {
+    const g = this.make.graphics({ add: false });
+    // Body — dark military gold uniform
+    g.fillStyle(0xAA8800);
+    g.fillRect(8, 13, 16, 13);
+    // Uniform accent stripe
+    g.fillStyle(0xCCAA00);
+    g.fillRect(11, 15, 3, 8);
+    g.fillRect(18, 15, 3, 8);
+    // Head — skin
+    g.fillStyle(0xFFCC80);
+    g.fillRect(10, 4, 12, 10);
+    // Helmet — dark gold
+    g.fillStyle(0x886600);
+    g.fillRect(9, 2, 14, 5);
+    g.fillStyle(0xAA8800);
+    g.fillRect(8, 6, 16, 3);
+    // Helmet plume — red
+    g.fillStyle(0xCC2200);
+    g.fillRect(14, 0, 4, 5);
+    // Banner pole — brown
+    g.fillStyle(0x6B3A1E);
+    g.fillRect(25, 0, 3, 30);
+    // Banner flag — red background
+    g.fillStyle(0xBB1100);
+    g.fillRect(25, 0, 7, 10);
+    // Banner flag — gold cross/emblem
+    g.fillStyle(0xFFCC00);
+    g.fillRect(26, 2, 5, 2);
+    g.fillRect(28, 1, 2, 5);
+    // Legs — dark gold trousers
+    g.fillStyle(0x775500);
+    g.fillRect(8, 26, 7, 6);
+    g.fillRect(17, 26, 7, 6);
+    g.generateTexture('player_banner', 32, 32);
     g.destroy();
   }
 

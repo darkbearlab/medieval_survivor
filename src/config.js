@@ -270,6 +270,9 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     // ── Free building drops (chest only) ──────────────────────────────────
     free_tower_lv2: { name: '★ 精英箭塔', desc: '免費放置一座升級版箭塔', icon: '🏹', type: 'free_building', buildType: 'tower_lv2' },
     free_castle:    { name: '🏰 城堡',     desc: '免費放置城堡（射箭＋生兵＋召法師）', icon: '🏰', type: 'free_building', buildType: 'castle' },
+
+    // ── Soldier aura (chest) ───────────────────────────────────────────────
+    soldier_aura: { name: '士兵強化光環', desc: '隨機提升士兵的攻擊力、防禦力或移動速度', icon: '🚩' },
   },
 
   SOLDIERS: {
@@ -356,6 +359,18 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       ACCENT:          0xFF88CC,
       STARTING_WEAPON: 'royal_scepter',
       STARTING_BONUS:  { maxFood: 20, food: 30, freeBuildings: ['castle'] },
+    },
+    banner: {
+      name:            '軍旗手',
+      tagline:         '士兵強化・集結快速',
+      lore:            '揮舞戰旗，激勵每一名士兵奮勇殺敵',
+      HP:              110,
+      SPEED:           155,
+      DEFENSE_PCT:     0,
+      TEXTURE:         'player_banner',
+      ACCENT:          0xDDCC22,
+      STARTING_WEAPON: 'hunter_bow',
+      STARTING_BONUS:  { upgrades: ['soldier_aura_atk', 'soldier_aura_def', 'soldier_aura_spd'] },
     },
   },
 };

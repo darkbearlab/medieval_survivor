@@ -133,7 +133,8 @@ export class Soldier {
   _moveDirectTo(tx, ty) {
     if (!this.sprite || !this.sprite.body) return;
     const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, tx, ty);
-    this.sprite.body.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
+    const spd = this.speed + (this.spdBonus || 0);
+    this.sprite.body.setVelocity(Math.cos(angle) * spd, Math.sin(angle) * spd);
     this.sprite.setFlipX(Math.cos(angle) < 0);
   }
 

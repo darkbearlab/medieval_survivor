@@ -1322,6 +1322,20 @@ export class GameScene extends Phaser.Scene {
 
   // Pure effect — no scene teardown. Used by both _applyUpgrade and _applyStartingBonus.
   _applyUpgradeEffect(key) {
+    // ── Internal aura sub-effects (used via STARTING_BONUS, not in chest pool) ─
+    if (key === 'soldier_aura_atk') {
+      this.player._auraAtk = (this.player._auraAtk || 0) + 6;
+      this._recalcUnitBonuses(); return;
+    }
+    if (key === 'soldier_aura_def') {
+      this.player._auraDef = (this.player._auraDef || 0) + 3;
+      this._recalcUnitBonuses(); return;
+    }
+    if (key === 'soldier_aura_spd') {
+      this.player._auraSpd = (this.player._auraSpd || 0) + 25;
+      this._recalcUnitBonuses(); return;
+    }
+
     const wu = CONFIG.WEAPON_UPGRADES[key];
     if (!wu) return;
 
@@ -1385,6 +1399,15 @@ export class GameScene extends Phaser.Scene {
         });
         EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
         break;
+      case 'soldier_aura': {
+        // Randomly buff one of the three soldier stats
+        const roll = Phaser.Math.Between(0, 2);
+        if (roll === 0)      { this.player._auraAtk = (this.player._auraAtk || 0) + 6; }
+        else if (roll === 1) { this.player._auraDef = (this.player._auraDef || 0) + 3; }
+        else                 { this.player._auraSpd = (this.player._auraSpd || 0) + 25; }
+        this._recalcUnitBonuses();
+        break;
+      }
     }
   }
 
@@ -1554,6 +1577,11 @@ export class GameScene extends Phaser.Scene {
     const player     = this.player;
     const inRally    = this.soldierRallyMode;
 
+    // Aura bonuses from the banner character upgrade
+    const auraAtk = player?._auraAtk || 0;
+    const auraDef = player?._auraDef || 0;
+    const auraSpd = player?._auraSpd || 0;
+
     // Total bonuses across all living buildings
     let totalAtk = 0, totalDef = 0;
     for (const tg of bs.trainingGrounds) { if (!tg.dead) totalAtk += tg.atkBonus; }
@@ -1566,12 +1594,12 @@ export class GameScene extends Phaser.Scene {
       const followPlayer = unit.deployed || (inRally && player && !player.isDead);
 
       if (followPlayer) {
-        unit.atkBonus = deployedAtk;
-        unit.defBonus = deployedDef;
+        unit.atkBonus = deployedAtk + auraAtk;
+        unit.defBonus = deployedDef + auraDef;
       } else {
         // Home building: soldiers anchor on barracks, mages on tower
         const anchor = unit.barracks || unit.tower;
-        if (!anchor) { unit.atkBonus = 0; unit.defBonus = 0; continue; }
+        if (!anchor) { unit.atkBonus = auraAtk; unit.defBonus = auraDef; unit.spdBonus = auraSpd; continue; }
         let atk = 0, def = 0;
         for (const tg of bs.trainingGrounds) {
           if (!tg.dead && Phaser.Math.Distance.Between(anchor.x, anchor.y, tg.x, tg.y) < BUFF_RANGE) {
@@ -1583,9 +1611,10 @@ export class GameScene extends Phaser.Scene {
             def += sm.defenseBonus;
           }
         }
-        unit.atkBonus = atk;
-        unit.defBonus = def;
+        unit.atkBonus = atk + auraAtk;
+        unit.defBonus = def + auraDef;
       }
+      unit.spdBonus = auraSpd;
     }
   }
 

@@ -5,7 +5,7 @@ function weapCfg(charKey) {
   return CONFIG.WEAPONS[wKey] || CONFIG.WEAPONS.hunter_bow;
 }
 
-export const CHAR_KEYS = ['warrior', 'ranger', 'mage', 'princess'];
+export const CHAR_KEYS = ['warrior', 'ranger', 'mage', 'princess', 'banner'];
 
 const LIST_W   = 220;   // left panel width
 const CARD_H   = 90;    // list item height
@@ -244,10 +244,15 @@ export class CharacterSelectScene extends Phaser.Scene {
     if (bonus.stone) bonusLines.push(`🪨 初始石材 +${bonus.stone}`);
     if (Array.isArray(bonus.freeBuildings))
       bonus.freeBuildings.forEach(b => bonusLines.push(`🏗 免費 ${BNAME[b] || b}`));
+    const INTERNAL_UPGRADE_NAMES = {
+      soldier_aura_atk: '士兵攻擊光環 +6',
+      soldier_aura_def: '士兵防禦光環 +3',
+      soldier_aura_spd: '士兵速度光環 +25',
+    };
     if (Array.isArray(bonus.upgrades))
       bonus.upgrades.forEach(u => {
-        const up = CONFIG.WEAPON_UPGRADES[u];
-        bonusLines.push(`⬆ 起始升級: ${up ? up.name : u}`);
+        const label = INTERNAL_UPGRADE_NAMES[u] || (CONFIG.WEAPON_UPGRADES[u]?.name ?? u);
+        bonusLines.push(`🚩 ${label}`);
       });
 
     if (bonusLines.length > 0) {
