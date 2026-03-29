@@ -501,10 +501,11 @@ export class GameScene extends Phaser.Scene {
     if (!projectile.active || !enemySprite.active) return;
 
     // Read all data BEFORE any destroy() call — destroy() clears the DataManager.
-    const isPiercing = projectile.getData('piercing');
-    const isSplit    = projectile.getData('isSplit');
-    const dmg        = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
-    const fp         = projectile.getData('fromPlayer');
+    const isPiercing  = projectile.getData('piercing');
+    const isSplit     = projectile.getData('isSplit');
+    const dmg         = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
+    const fp          = projectile.getData('fromPlayer');
+    const projAngle   = projectile.getData('angle') ?? 0;
 
     // Piercing: skip already-hit enemies; don't destroy the projectile
     if (isPiercing) {
@@ -529,22 +530,25 @@ export class GameScene extends Phaser.Scene {
       if (this.player.weaponKey === 'royal_scepter' && entity && !entity.dead && Math.random() < 0.20)
         this._applyFrost(entity, 1);
 
-      // Split arrows (hunter_bow) — isSplit read before destroy() to prevent recursive splits
+      // Split arrows (hunter_bow) — triggers on normal hit AND each piercing hit.
+      // isSplit flag (read before destroy) prevents recursive split chains.
       const splitCount = this.player._bowSplitCount || 0;
-      if (splitCount > 0 && !isPiercing && !isSplit) {
-        this._triggerBowSplit(px, py, Math.round(dmg * 0.7), splitCount);
+      if (splitCount > 0 && !isSplit) {
+        this._triggerBowSplit(px, py, Math.round(dmg * 0.7), splitCount, projAngle);
       }
     }
   }
 
-  // Fire `count` sub-arrows radiating outward from the hit point in a full circle.
-  _triggerBowSplit(x, y, damage, count) {
-    const angleStep = (Math.PI * 2) / count;
+  // Fire `count` sub-arrows fanning forward from the hit point.
+  // Each arrow spreads randomly within ±SPREAD_HALF radians of the original direction.
+  _triggerBowSplit(x, y, damage, count, baseAngle = 0) {
+    const SPREAD_HALF = Math.PI * (40 / 180); // ±40°
     for (let i = 0; i < count; i++) {
-      const angle = i * angleStep;
+      const offset = (Math.random() * 2 - 1) * SPREAD_HALF;
+      const a = baseAngle + offset;
       const fakeTarget = {
-        x: x + Math.cos(angle) * 400,
-        y: y + Math.sin(angle) * 400,
+        x: x + Math.cos(a) * 500,
+        y: y + Math.sin(a) * 500,
       };
       this._fireProjectile(x, y, fakeTarget, damage, true, 0xAADDFF, { isSplit: true });
     }
@@ -761,6 +765,7 @@ export class GameScene extends Phaser.Scene {
       proj.setData('isSplit', true);
     }
     const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
+    proj.setData('angle', angle);  // stored so split can fan in the same direction
     proj.body.setVelocity(
       Math.cos(angle) * CONFIG.PROJECTILE.SPEED,
       Math.sin(angle) * CONFIG.PROJECTILE.SPEED
@@ -1657,11 +1662,9 @@ export class GameScene extends Phaser.Scene {
         this.player._bowSplitCount = (this.player._bowSplitCount || 0) + val;
         break;
       case 'transform':
-        // Lv10 蛻變：射程全地圖 + 穿透
-        this.player.attackRange  = 9999;
+        // Lv10 蛻變：射程全地圖 + 穿透（保留所有已累積的攻擊力/攻速/分裂）
+        this.player.attackRange   = 9999;
         this.player._piercingShot = true;
-        // Disable split at transform — piercing replaces that mechanic
-        this.player._bowSplitCount = 0;
         // Flash the player sprite gold to signal the transform
         this.player.sprite.setTint(0xFFEE44);
         this.time.delayedCall(800, () => {
