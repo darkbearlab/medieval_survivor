@@ -274,7 +274,10 @@ export class GameScene extends Phaser.Scene {
     };
     this._onEditorClosed   = () => {
       if (this._editorPaused) { this.physics.resume(); this.isPaused = false; this._editorPaused = false; }
-      if (this.input?.keyboard) this.input.keyboard.enabled = true;
+      if (this.input?.keyboard) {
+        this.input.keyboard.enabled = true;
+        this.input.keyboard.resetKeys();
+      }
     };
     EventBus.on('build_select',              this._onBuildSelect);
     EventBus.on('build_cancelled',           this._onBuildCancelled);
@@ -1359,6 +1362,7 @@ export class GameScene extends Phaser.Scene {
   _applyUpgrade(key) {
     this.isPaused = false;
     this.scene.stop('UpgradeChoiceScene');
+    if (this.input?.keyboard) this.input.keyboard.resetKeys();
 
     const wu = CONFIG.WEAPON_UPGRADES[key];
     if (!wu) return;

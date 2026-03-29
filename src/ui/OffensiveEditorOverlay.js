@@ -314,7 +314,6 @@ class OffensiveEditorOverlay {
       e.stopImmediatePropagation();
     };
     document.addEventListener('keydown', this._keyBlocker, true);
-    document.addEventListener('keyup',   this._keyBlocker, true);
 
     this._wireEvents();
   }
