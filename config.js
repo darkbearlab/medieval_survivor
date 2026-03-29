@@ -298,7 +298,23 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
         { label: '蛻變：長空穿射', effect: 'transform', desc: '射程覆蓋全地圖，箭矢穿透所有目標' },                    // Lv10
       ],
     },
-    war_sword:     { name: '戰士之刃', icon: '⚔',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    war_sword: {
+      name: '戰士之刃', icon: '⚔', maxLevel: 10,
+      rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 },
+      levels: [
+        { label: '攻擊力提升',    effect: 'atk',        values: { common: 8,  rare: 14, epic: 20,  legendary: 30  } }, // Lv1
+        { label: '二連斬',        effect: 'combo_2',    desc: '每次攻擊揮砍兩下' },                                    // Lv2
+        { label: '擊退敵人',      effect: 'knockback',  desc: '攻擊時將敵人擊退' },                                    // Lv3
+        { label: '攻擊範圍提升',  effect: 'range',      values: { common: 20, rare: 30, epic: 45,  legendary: 60  } }, // Lv4
+        { label: '射程提升',      effect: 'range',      values: { common: 20, rare: 30, epic: 45,  legendary: 60  } }, // Lv5
+        { label: '攻擊力提升',    effect: 'atk',        values: { common: 10, rare: 16, epic: 24,  legendary: 35  } }, // Lv6
+        { label: '三連斬',        effect: 'combo_3',    desc: '每次攻擊揮砍三下' },                                    // Lv7
+        { label: '旋風斬',        effect: 'spin_slash', desc: '三連斬後追加一個360度的斬擊' },                         // Lv8
+        { label: '攻擊力大幅提升', effect: 'atk',       values: { common: 16, rare: 26, epic: 40,  legendary: 60  } }, // Lv9
+        { label: '蛻變：無雙劍舞', effect: 'transform', desc: '大幅提升攻擊力與移動速度',
+          values: { common: 30, rare: 50, epic: 70, legendary: 100 }, speedBonus: 25 },                                // Lv10
+      ],
+    },
     arcane_staff:  { name: '奧術法杖', icon: '🔮', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
     iron_spear:    { name: '鐵槍',     icon: '🗡',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
     royal_scepter: { name: '皇家權杖', icon: '✨', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
