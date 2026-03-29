@@ -500,8 +500,13 @@ export class GameScene extends Phaser.Scene {
   _onProjectileHitEnemy(projectile, enemySprite) {
     if (!projectile.active || !enemySprite.active) return;
 
-    // Piercing: skip already-hit enemies; don't destroy the projectile
+    // Read all data BEFORE any destroy() call — destroy() clears the DataManager.
     const isPiercing = projectile.getData('piercing');
+    const isSplit    = projectile.getData('isSplit');
+    const dmg        = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
+    const fp         = projectile.getData('fromPlayer');
+
+    // Piercing: skip already-hit enemies; don't destroy the projectile
     if (isPiercing) {
       const hitSet = projectile.getData('hitEnemies');
       if (hitSet) {
@@ -511,8 +516,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     const entity = enemySprite.getData('entity');
-    const dmg    = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
-    const fp     = projectile.getData('fromPlayer');
     if (entity) entity.takeDamage(dmg);
     const px = projectile.x, py = projectile.y;
 
@@ -526,9 +529,9 @@ export class GameScene extends Phaser.Scene {
       if (this.player.weaponKey === 'royal_scepter' && entity && !entity.dead && Math.random() < 0.20)
         this._applyFrost(entity, 1);
 
-      // Split arrows (hunter_bow, non-piercing only — piercing replaces split at Lv10)
+      // Split arrows (hunter_bow) — isSplit read before destroy() to prevent recursive splits
       const splitCount = this.player._bowSplitCount || 0;
-      if (splitCount > 0 && !isPiercing && !projectile.getData('isSplit')) {
+      if (splitCount > 0 && !isPiercing && !isSplit) {
         this._triggerBowSplit(px, py, Math.round(dmg * 0.7), splitCount);
       }
     }
