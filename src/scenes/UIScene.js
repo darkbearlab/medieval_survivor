@@ -37,6 +37,25 @@ export class UIScene extends Phaser.Scene {
       this._gearTxt.setColor('#7a5820');
     });
     this._gearBg.on('pointerdown', () => offensiveEditorOverlay.toggle(true));
+
+    // ── Test mode button (below gear) ─────────────────────────────────────────
+    this._testMode = false;
+    this._testBg = this.add.rectangle(WIDTH - 22, 200, 36, 22, 0x0d0d0d, 0.82)
+      .setStrokeStyle(1, 0x1a4a1a).setScrollFactor(0).setDepth(200)
+      .setInteractive({ useHandCursor: true });
+    this._testTxt = this.add.text(WIDTH - 22, 200, '🧪', {
+      fontSize: '13px',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+
+    this._testBg.on('pointerover', () => this._testBg.setStrokeStyle(1, 0x44dd44));
+    this._testBg.on('pointerout',  () => this._testBg.setStrokeStyle(1, this._testMode ? 0x44aa44 : 0x1a4a1a));
+    this._testBg.on('pointerdown', () => {
+      this._testMode = !this._testMode;
+      const gameScene = this.scene.get('GameScene');
+      if (gameScene) gameScene._testMode = this._testMode;
+      this._testBg.setFillStyle(this._testMode ? 0x0d2a0d : 0x0d0d0d);
+      this._testBg.setStrokeStyle(1, this._testMode ? 0x44aa44 : 0x1a4a1a);
+    });
   }
 
   update() {

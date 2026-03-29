@@ -1349,6 +1349,9 @@ export class GameScene extends Phaser.Scene {
   // random eligible key from that rarity's pool.  The 3 cards are guaranteed
   // to have different weapon keys.  Falls back through other rarities if the
   // rolled rarity has no eligible entries left.
+  //
+  // Slot 0 bias: 40% chance to force the character's starting weapon so the
+  // player sees their own weapon more consistently.
   _pickUpgrades(count) {
     const pool     = CONFIG.UPGRADE_POOL;
     const rarCfg   = CONFIG.UPGRADE_RARITIES;
@@ -1376,19 +1379,38 @@ export class GameScene extends Phaser.Scene {
       return rarKeys[rarKeys.length - 1];
     };
 
-    const picked   = [];
-    const usedKeys = new Set();
+    const picked      = [];
+    const usedKeys    = new Set();
+    const CLASS_BIAS  = 0.40; // probability slot 0 is forced to starting weapon
+    const startWeapon = (CONFIG.CHARACTERS[this.characterKey] || {}).STARTING_WEAPON;
 
     for (let i = 0; i < count; i++) {
-      const preferred  = rollRarity();
-      // Try preferred rarity first, then cycle through others as fallback
-      const tryOrder   = [preferred, ...rarKeys.filter(r => r !== preferred)];
+      // Slot 0: force starting weapon when test mode is on, or apply 40% bias normally
+      let forcedKey = null;
+      if (i === 0 && startWeapon && !usedKeys.has(startWeapon)) {
+        const cfg = pool[startWeapon];
+        const cur = levels[startWeapon] || 0;
+        if (cfg && cur < cfg.maxLevel && (this._testMode || Math.random() < CLASS_BIAS)) {
+          forcedKey = startWeapon;
+        }
+      }
+
+      const rarity = rollRarity();
+
+      if (forcedKey) {
+        picked.push({ key: forcedKey, rarity });
+        usedKeys.add(forcedKey);
+        continue;
+      }
+
+      // Normal random pick: try preferred rarity first, then cycle as fallback
+      const tryOrder = [rarity, ...rarKeys.filter(r => r !== rarity)];
       let found = false;
-      for (const rarity of tryOrder) {
-        const eligible = byRarity[rarity].filter(k => !usedKeys.has(k));
+      for (const r of tryOrder) {
+        const eligible = byRarity[r].filter(k => !usedKeys.has(k));
         if (eligible.length > 0) {
           const key = eligible[Math.floor(Math.random() * eligible.length)];
-          picked.push({ key, rarity });
+          picked.push({ key, rarity: r });
           usedKeys.add(key);
           found = true;
           break;
