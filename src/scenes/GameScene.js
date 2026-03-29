@@ -499,20 +499,51 @@ export class GameScene extends Phaser.Scene {
 
   _onProjectileHitEnemy(projectile, enemySprite) {
     if (!projectile.active || !enemySprite.active) return;
-    const entity    = enemySprite.getData('entity');
-    const dmg       = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
-    const fp        = projectile.getData('fromPlayer');
+
+    // Piercing: skip already-hit enemies; don't destroy the projectile
+    const isPiercing = projectile.getData('piercing');
+    if (isPiercing) {
+      const hitSet = projectile.getData('hitEnemies');
+      if (hitSet) {
+        if (hitSet.has(enemySprite)) return;
+        hitSet.add(enemySprite);
+      }
+    }
+
+    const entity = enemySprite.getData('entity');
+    const dmg    = projectile.getData('damage') || CONFIG.PROJECTILE.DAMAGE;
+    const fp     = projectile.getData('fromPlayer');
     if (entity) entity.takeDamage(dmg);
     const px = projectile.x, py = projectile.y;
-    projectile.destroy();
+
+    if (!isPiercing) projectile.destroy();
 
     if (fp && this.player) {
-      if (this.player.aoeOnHit)      this._triggerPlayerAoE(px, py, Math.round(dmg * 0.65));
+      if (this.player.aoeOnHit)        this._triggerPlayerAoE(px, py, Math.round(dmg * 0.65));
       if (this.player._explosiveShots) this._triggerMountExplosion(px, py, Math.round(dmg * 0.5), this.player._explosiveShots);
       if (this.player._chainBolt && entity && !entity.dead) this._chainBoltHit(entity, dmg, this.player._chainBolt);
       if (this.player._frostBolt && entity && !entity.dead) this._applyFrost(entity, this.player._frostBolt);
       if (this.player.weaponKey === 'royal_scepter' && entity && !entity.dead && Math.random() < 0.20)
         this._applyFrost(entity, 1);
+
+      // Split arrows (hunter_bow, non-piercing only — piercing replaces split at Lv10)
+      const splitCount = this.player._bowSplitCount || 0;
+      if (splitCount > 0 && !isPiercing && !projectile.getData('isSplit')) {
+        this._triggerBowSplit(px, py, Math.round(dmg * 0.7), splitCount);
+      }
+    }
+  }
+
+  // Fire `count` sub-arrows radiating outward from the hit point in a full circle.
+  _triggerBowSplit(x, y, damage, count) {
+    const angleStep = (Math.PI * 2) / count;
+    for (let i = 0; i < count; i++) {
+      const angle = i * angleStep;
+      const fakeTarget = {
+        x: x + Math.cos(angle) * 400,
+        y: y + Math.sin(angle) * 400,
+      };
+      this._fireProjectile(x, y, fakeTarget, damage, true, 0xAADDFF, { isSplit: true });
     }
   }
 
@@ -696,13 +727,17 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN, () => { if (proj.active) proj.destroy(); });
   }
 
-  _fireProjectile(x, y, targetSprite, damage = CONFIG.PROJECTILE.DAMAGE, fromPlayer = false, tint = null) {
+  // opts.piercing  — if true, arrow passes through all enemies (Lv10 transform)
+  // opts.isSplit   — if true, this is a split sub-arrow (won't trigger split again)
+  _fireProjectile(x, y, targetSprite, damage = CONFIG.PROJECTILE.DAMAGE, fromPlayer = false, tint = null, opts = {}) {
     const proj = this.projectiles.create(x, y, 'projectile');
     if (!proj || !proj.body) return;
     proj.setDepth(12);
     // Tint: explicit tint (WeaponMount) takes priority; otherwise use character type
     if (tint !== null) {
       proj.setTint(tint);
+    } else if (opts.piercing) {
+      proj.setTint(0xFFEE44);   // piercing — golden
     } else if (fromPlayer && this.player && this.player.aoeOnHit) {
       proj.setTint(0xCC44FF);   // mage — purple
     } else if (fromPlayer && this.player && this.player.weaponKey === 'royal_scepter') {
@@ -715,12 +750,22 @@ export class GameScene extends Phaser.Scene {
     proj.setData('isProjectile', true);
     proj.setData('fromPlayer', fromPlayer);
     proj.setData('damage', damage);
+    if (opts.piercing) {
+      proj.setData('piercing', true);
+      proj.setData('hitEnemies', new Set());
+    }
+    if (opts.isSplit) {
+      proj.setData('isSplit', true);
+    }
     const angle = Phaser.Math.Angle.Between(x, y, targetSprite.x, targetSprite.y);
     proj.body.setVelocity(
       Math.cos(angle) * CONFIG.PROJECTILE.SPEED,
       Math.sin(angle) * CONFIG.PROJECTILE.SPEED
     );
-    this.time.delayedCall(CONFIG.PROJECTILE.LIFESPAN, () => {
+    const lifespan = opts.piercing
+      ? CONFIG.PROJECTILE.PIERCING_LIFESPAN
+      : CONFIG.PROJECTILE.LIFESPAN;
+    this.time.delayedCall(lifespan, () => {
       if (proj.active) proj.destroy();
     });
   }
@@ -1009,8 +1054,9 @@ export class GameScene extends Phaser.Scene {
         this.player.attackRange
       );
       if (target) {
-        const dmg = Math.round((CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus) * this.player.damageMult);
-        this._fireProjectile(this.player.x, this.player.y, target, dmg, true);
+        const dmg       = Math.round((CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus) * this.player.damageMult);
+        const isPiercing = !!(this.player._piercingShot);
+        this._fireProjectile(this.player.x, this.player.y, target, dmg, true, null, { piercing: isPiercing });
         this.soundManager.play('player_shoot');
         // dual_shot: fire extra projectiles at small angle offsets
         const extras = this.player._extraShots || 0;
@@ -1021,7 +1067,7 @@ export class GameScene extends Phaser.Scene {
             x: this.player.x + Math.cos(baseAngle + offsetAngle) * 400,
             y: this.player.y + Math.sin(baseAngle + offsetAngle) * 400,
           };
-          this._fireProjectile(this.player.x, this.player.y, fakeTarget, Math.round(dmg * 0.8), true);
+          this._fireProjectile(this.player.x, this.player.y, fakeTarget, Math.round(dmg * 0.8), true, null, { piercing: isPiercing });
         }
         this.nextAttackTime = time + this.player.attackRate;
       }
@@ -1471,15 +1517,20 @@ export class GameScene extends Phaser.Scene {
     const newLevel  = Math.min(prevLevel + 1, wu.maxLevel);
     this.player._upgradeLevels[key] = newLevel;
 
-    // ── Rarity bonus (placeholder: adds to attackBonus) ─────────────────────
-    // Will be replaced with per-key, per-level unique effects later.
+    // ── Weapons with per-level definitions ───────────────────────────────────
+    // If the upgrade pool entry has a `levels` array, apply its specific effect
+    // for this level and skip the generic rarityBonus block.
+    if (wu.levels) {
+      this._applyWeaponLevelEffect(key, wu.levels[newLevel - 1], rarity, newLevel);
+      return;
+    }
+
+    // ── Generic rarityBonus (placeholder for upgrades not yet per-level) ─────
     const bonus = (wu.rarityBonus && wu.rarityBonus[rarity]) || 0;
     this.player.attackBonus = (this.player.attackBonus || 0) + bonus;
 
-    // ── Level 10 transform placeholder ──────────────────────────────────────
     if (newLevel === wu.maxLevel && wu.maxLevel === 10) {
-      // TODO: replace with per-weapon unique transform effects
-      this.player.attackBonus += 20; // placeholder burst
+      this.player.attackBonus += 20; // placeholder transform burst
     }
 
     // ── Mechanical effects (one trigger per stack, rarity-independent) ───────
@@ -1550,6 +1601,49 @@ export class GameScene extends Phaser.Scene {
         this._recalcUnitBonuses();
         break;
       }
+    }
+  }
+
+  // Dispatch per-level effects for weapons that have a `levels` array in config.
+  // lvCfg = wu.levels[newLevel - 1], rarity = drawn rarity string.
+  _applyWeaponLevelEffect(key, lvCfg, rarity, newLevel) {
+    if (!lvCfg) return;
+
+    switch (key) {
+      case 'hunter_bow':
+        this._applyHunterBowLevel(lvCfg, rarity, newLevel);
+        break;
+      // Future weapons: add cases here as each weapon is designed.
+    }
+  }
+
+  _applyHunterBowLevel(lvCfg, rarity, newLevel) {
+    const val = (lvCfg.values && lvCfg.values[rarity]) || 0;
+    switch (lvCfg.effect) {
+      case 'atk':
+        this.player.attackBonus = (this.player.attackBonus || 0) + val;
+        break;
+      case 'rate':
+        // Reduce attack interval; floor at 200 ms to prevent absurdly fast shots
+        this.player.attackRate = Math.max(200, this.player.attackRate - val);
+        break;
+      case 'split':
+        // Accumulate split arrow count; each stack adds `val` sub-arrows on hit
+        this.player._bowSplitCount = (this.player._bowSplitCount || 0) + val;
+        break;
+      case 'transform':
+        // Lv10 蛻變：射程全地圖 + 穿透
+        this.player.attackRange  = 9999;
+        this.player._piercingShot = true;
+        // Disable split at transform — piercing replaces that mechanic
+        this.player._bowSplitCount = 0;
+        // Flash the player sprite gold to signal the transform
+        this.player.sprite.setTint(0xFFEE44);
+        this.time.delayedCall(800, () => {
+          if (this.player.sprite && this.player.sprite.active)
+            this.player.sprite.clearTint();
+        });
+        break;
     }
   }
 

@@ -103,11 +103,18 @@ export class UpgradeChoiceScene extends Phaser.Scene {
         fontSize: '12px', color: levelColor,
       }).setOrigin(0.5).setDepth(2);
 
-      // Bonus description (placeholder: shows attack bonus gained)
-      const bonusVal = (cfg.rarityBonus && cfg.rarityBonus[rarity]) || 0;
-      const descText = isTransform
-        ? '解鎖獨特蛻變效果'
-        : `攻擊力 +${bonusVal}（placeholder）`;
+      // Description: use per-level label/desc if defined, otherwise rarityBonus fallback
+      const nextLvCfg = cfg.levels ? cfg.levels[nextLevel - 1] : null;
+      let descText;
+      if (isTransform) {
+        descText = (nextLvCfg && nextLvCfg.desc) || '解鎖獨特蛻變效果';
+      } else if (nextLvCfg) {
+        const val = nextLvCfg.values ? nextLvCfg.values[rarity] : null;
+        descText = nextLvCfg.label + (val != null ? `  [${rarity === 'common' ? '普' : rarity === 'rare' ? '稀' : rarity === 'epic' ? '詩' : '傳'}+${val}]` : '');
+      } else {
+        const bonusVal = (cfg.rarityBonus && cfg.rarityBonus[rarity]) || 0;
+        descText = `攻擊力 +${bonusVal}`;
+      }
       this.add.text(cx, cardY - cardH / 2 + 128, descText, {
         fontSize: '11px', color: '#AAAAAA',
         wordWrap: { width: cardW - 20 }, align: 'center',

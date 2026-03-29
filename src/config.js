@@ -85,6 +85,7 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     SPEED: 420,
     DAMAGE: 25,
     LIFESPAN: 2200,
+    PIERCING_LIFESPAN: 9000,  // long enough to cross the full world diagonal
   },
 
   BUILDINGS: {
@@ -279,7 +280,24 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
   // for runtime use and are independent of the rarity/level system.
   UPGRADE_POOL: {
     // ── 基礎武器 (all rarities) ────────────────────────────────────────────
-    hunter_bow:    { name: '獵弓',     icon: '🏹', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    hunter_bow: {
+      name: '獵弓', icon: '🏹', maxLevel: 10,
+      // Per-level effects — index 0 = Lv1, index 9 = Lv10.
+      // effect: 'atk' | 'rate' | 'split' | 'transform'
+      // values: per-rarity amount applied when this level is reached.
+      levels: [
+        { label: '攻擊力提升',    effect: 'atk',       values: { common: 4,  rare: 7,   epic: 11,  legendary: 16  } }, // Lv1
+        { label: '攻速提升',      effect: 'rate',      values: { common: 60, rare: 100,  epic: 150, legendary: 200 } }, // Lv2
+        { label: '分裂彈',        effect: 'split',     values: { common: 1,  rare: 2,   epic: 3,   legendary: 4   } }, // Lv3
+        { label: '攻擊力提升',    effect: 'atk',       values: { common: 4,  rare: 7,   epic: 11,  legendary: 16  } }, // Lv4
+        { label: '攻速提升',      effect: 'rate',      values: { common: 60, rare: 100,  epic: 150, legendary: 200 } }, // Lv5
+        { label: '分裂彈',        effect: 'split',     values: { common: 1,  rare: 2,   epic: 3,   legendary: 4   } }, // Lv6
+        { label: '攻擊力提升',    effect: 'atk',       values: { common: 4,  rare: 7,   epic: 11,  legendary: 16  } }, // Lv7
+        { label: '攻速提升',      effect: 'rate',      values: { common: 60, rare: 100,  epic: 150, legendary: 200 } }, // Lv8
+        { label: '分裂彈',        effect: 'split',     values: { common: 1,  rare: 2,   epic: 3,   legendary: 4   } }, // Lv9
+        { label: '蛻變：長空穿射', effect: 'transform', desc: '射程覆蓋全地圖，箭矢穿透所有目標' },                    // Lv10
+      ],
+    },
     war_sword:     { name: '戰士之刃', icon: '⚔',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
     arcane_staff:  { name: '奧術法杖', icon: '🔮', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
     iron_spear:    { name: '鐵槍',     icon: '🗡',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
