@@ -541,16 +541,21 @@ export class GameScene extends Phaser.Scene {
 
   // Fire `count` sub-arrows fanning forward from the hit point.
   // Each arrow spreads randomly within ±SPREAD_HALF radians of the original direction.
+  // Spawn point is offset forward by OFFSET px so arrows don't immediately re-hit
+  // the enemy that was just struck.
   _triggerBowSplit(x, y, damage, count, baseAngle = 0) {
     const SPREAD_HALF = Math.PI * (40 / 180); // ±40°
+    const OFFSET      = 32; // px past the hit point, past the enemy's physics body
+    const sx = x + Math.cos(baseAngle) * OFFSET;
+    const sy = y + Math.sin(baseAngle) * OFFSET;
     for (let i = 0; i < count; i++) {
       const offset = (Math.random() * 2 - 1) * SPREAD_HALF;
       const a = baseAngle + offset;
       const fakeTarget = {
-        x: x + Math.cos(a) * 500,
-        y: y + Math.sin(a) * 500,
+        x: sx + Math.cos(a) * 500,
+        y: sy + Math.sin(a) * 500,
       };
-      this._fireProjectile(x, y, fakeTarget, damage, true, 0xAADDFF, { isSplit: true });
+      this._fireProjectile(sx, sy, fakeTarget, damage, true, 0xAADDFF, { isSplit: true });
     }
   }
 
