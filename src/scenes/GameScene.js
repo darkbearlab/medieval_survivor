@@ -75,6 +75,13 @@ export class GameScene extends Phaser.Scene {
     this.resourceNodes = this._createResourceNodes();
     this.player        = new Player(this, TOWN_CENTER.X + 120, TOWN_CENTER.Y + 120, this.characterKey);
 
+    // --- Upgrade level tracking (new rarity system) ---
+    // _upgradeLevels[key] = number of times this upgrade has been picked (0–10)
+    // Starting weapon counts as level 1 so it can be upgraded further
+    this.player._upgradeLevels = {};
+    const _startWeapon = (CONFIG.CHARACTERS[this.characterKey] || {}).STARTING_WEAPON;
+    if (_startWeapon) this.player._upgradeLevels[_startWeapon] = 1;
+
     // --- Terrain (impassable rocks) ---
     // Disabled: terrain caused enemies to get stuck. Class/method preserved for future use.
     // this._createTerrain();
@@ -338,7 +345,7 @@ export class GameScene extends Phaser.Scene {
     // --- Weapon mounts (boss kill upgrades) ---
     this._weaponMounts = [];
     this._onBossKilled = () => this._showUpgradeChoice();
-    this._onUpgradeChosen = (key) => this._applyUpgrade(key);
+    this._onUpgradeChosen = (data) => this._applyUpgrade(data);
     EventBus.on('boss_killed',     this._onBossKilled);
     EventBus.on('upgrade_chosen',  this._onUpgradeChosen);
 
@@ -1287,15 +1294,64 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
 
   _showUpgradeChoice() {
-    // Pause the wave countdown while choosing
     this.isPaused = true;
-    // Pick 3 random upgrades from the pool (allow duplicates)
-    const pool   = Object.keys(CONFIG.WEAPON_UPGRADES);
-    const picks  = [];
-    while (picks.length < 3) {
-      picks.push(pool[Phaser.Math.Between(0, pool.length - 1)]);
+    const picks = this._pickUpgrades(3);
+    this.scene.launch('UpgradeChoiceScene', { picks });
+  }
+
+  // Draw `count` upgrade cards: each card rolls its own rarity, then picks a
+  // random eligible key from that rarity's pool.  The 3 cards are guaranteed
+  // to have different weapon keys.  Falls back through other rarities if the
+  // rolled rarity has no eligible entries left.
+  _pickUpgrades(count) {
+    const pool     = CONFIG.UPGRADE_POOL;
+    const rarCfg   = CONFIG.UPGRADE_RARITIES;
+    const levels   = this.player._upgradeLevels || {};
+    const rarKeys  = Object.keys(rarCfg); // ['common','rare','epic','legendary']
+
+    // Build eligible key lists per rarity
+    const byRarity = { common: [], rare: [], epic: [], legendary: [] };
+    for (const [key, cfg] of Object.entries(pool)) {
+      const cur = levels[key] || 0;
+      if (cur >= cfg.maxLevel) continue;  // already maxed — exclude
+      const allowed = cfg.rarities || rarKeys;
+      for (const r of allowed) {
+        if (byRarity[r]) byRarity[r].push(key);
+      }
     }
-    this.scene.launch('UpgradeChoiceScene', { upgrades: picks });
+
+    // Roll a single rarity according to weights
+    const rollRarity = () => {
+      let r = Math.random() * 100;
+      for (const rk of rarKeys) {
+        if (r < rarCfg[rk].weight) return rk;
+        r -= rarCfg[rk].weight;
+      }
+      return rarKeys[rarKeys.length - 1];
+    };
+
+    const picked   = [];
+    const usedKeys = new Set();
+
+    for (let i = 0; i < count; i++) {
+      const preferred  = rollRarity();
+      // Try preferred rarity first, then cycle through others as fallback
+      const tryOrder   = [preferred, ...rarKeys.filter(r => r !== preferred)];
+      let found = false;
+      for (const rarity of tryOrder) {
+        const eligible = byRarity[rarity].filter(k => !usedKeys.has(k));
+        if (eligible.length > 0) {
+          const key = eligible[Math.floor(Math.random() * eligible.length)];
+          picked.push({ key, rarity });
+          usedKeys.add(key);
+          found = true;
+          break;
+        }
+      }
+      if (!found) break; // fewer than `count` options remain — return what we have
+    }
+
+    return picked;
   }
 
   // Applies the STARTING_BONUS defined in the character's config.
@@ -1359,22 +1415,28 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  _applyUpgrade(key) {
+  // data = { key, rarity } — sent by UpgradeChoiceScene via 'upgrade_chosen' event.
+  _applyUpgrade(data) {
     this.isPaused = false;
     this.scene.stop('UpgradeChoiceScene');
     if (this.input?.keyboard) this.input.keyboard.resetKeys();
 
-    const wu = CONFIG.WEAPON_UPGRADES[key];
+    const { key, rarity = 'common' } = (typeof data === 'object' && data !== null) ? data : { key: data };
+    const wu = CONFIG.UPGRADE_POOL[key];
     if (!wu) return;
 
-    this._applyUpgradeEffect(key);
+    this._applyUpgradeEffect(key, rarity);
 
-    // Brief on-screen confirmation
+    // Brief on-screen confirmation — colour matches rarity
     const { WIDTH, HEIGHT } = CONFIG;
-    const label = this.add.text(WIDTH / 2, HEIGHT / 2 - 40, `✦ ${wu.name} ✦`, {
-      fontSize: '28px', fontFamily: 'Georgia, serif',
-      color: '#FFD700', stroke: '#000000', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
+    const rarCfg = CONFIG.UPGRADE_RARITIES[rarity] || {};
+    const color  = rarCfg.color || '#FFD700';
+    const level  = this.player._upgradeLevels[key] || 1;
+    const label  = this.add.text(WIDTH / 2, HEIGHT / 2 - 40,
+      `✦ ${wu.name}  Lv${level} ✦`, {
+        fontSize: '28px', fontFamily: 'Georgia, serif',
+        color, stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(300).setScrollFactor(0).setAlpha(0);
     this.tweens.add({
       targets: label, alpha: 1, y: HEIGHT / 2 - 60, duration: 350,
       yoyo: true, hold: 800,
@@ -1382,9 +1444,11 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // Pure effect — no scene teardown. Used by both _applyUpgrade and _applyStartingBonus.
-  _applyUpgradeEffect(key) {
-    // ── Internal aura sub-effects (used via STARTING_BONUS, not in chest pool) ─
+  // Pure effect — no scene teardown.
+  // rarity: 'common' | 'rare' | 'epic' | 'legendary'  (default 'common' for
+  //         STARTING_BONUS / internal calls that pre-date the rarity system)
+  _applyUpgradeEffect(key, rarity = 'common') {
+    // ── Internal aura sub-effects (STARTING_BONUS only, not in UPGRADE_POOL) ──
     if (key === 'soldier_aura_atk') {
       this.player._auraAtk = (this.player._auraAtk || 0) + 6;
       this._recalcUnitBonuses(); return;
@@ -1398,9 +1462,27 @@ export class GameScene extends Phaser.Scene {
       this._recalcUnitBonuses(); return;
     }
 
-    const wu = CONFIG.WEAPON_UPGRADES[key];
+    const wu = CONFIG.UPGRADE_POOL[key];
     if (!wu) return;
 
+    // ── Level tracking ───────────────────────────────────────────────────────
+    if (!this.player._upgradeLevels) this.player._upgradeLevels = {};
+    const prevLevel = this.player._upgradeLevels[key] || 0;
+    const newLevel  = Math.min(prevLevel + 1, wu.maxLevel);
+    this.player._upgradeLevels[key] = newLevel;
+
+    // ── Rarity bonus (placeholder: adds to attackBonus) ─────────────────────
+    // Will be replaced with per-key, per-level unique effects later.
+    const bonus = (wu.rarityBonus && wu.rarityBonus[rarity]) || 0;
+    this.player.attackBonus = (this.player.attackBonus || 0) + bonus;
+
+    // ── Level 10 transform placeholder ──────────────────────────────────────
+    if (newLevel === wu.maxLevel && wu.maxLevel === 10) {
+      // TODO: replace with per-weapon unique transform effects
+      this.player.attackBonus += 20; // placeholder burst
+    }
+
+    // ── Mechanical effects (one trigger per stack, rarity-independent) ───────
     switch (key) {
       case 'dual_shot':
         this.player._extraShots = (this.player._extraShots || 0) + 1;
@@ -1423,26 +1505,25 @@ export class GameScene extends Phaser.Scene {
         this._weaponMounts.push(g1, g2);
         break;
       }
+      // Stat upgrades — rarity bonus already added above via attackBonus placeholder;
+      // real per-stat amounts will be implemented during per-weapon design pass.
       case 'speed_up':
-        this.player.speed += wu.AMOUNT;
+        this.player.speed += 15;
         break;
       case 'defense_up':
-        this.player.defense += wu.AMOUNT;
-        break;
-      case 'attack_up':
-        this.player.attackBonus += wu.AMOUNT;
+        this.player.defense += 3;
         break;
       case 'max_hp_up':
-        this.player.maxHp += wu.AMOUNT;
-        this.player.hp = Math.min(this.player.hp + wu.AMOUNT, this.player.maxHp);
+        this.player.maxHp += 30;
+        this.player.hp = Math.min(this.player.hp + 30, this.player.maxHp);
         EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
         break;
       case 'heal':
-        this.player.hp = Math.min(this.player.hp + wu.AMOUNT, this.player.maxHp);
+        this.player.hp = Math.min(this.player.hp + 50, this.player.maxHp);
         EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
         break;
       case 'gold_bonus':
-        this.economy.add('gold', wu.AMOUNT);
+        this.economy.add('gold', 60);
         EventBus.emit('resources_updated', this.economy.resources);
         break;
       case 'free_tower_lv2':
@@ -1462,7 +1543,6 @@ export class GameScene extends Phaser.Scene {
         EventBus.emit('free_buildings_updated', this._freeBuildingInventory);
         break;
       case 'soldier_aura': {
-        // Randomly buff one of the three soldier stats
         const roll = Phaser.Math.Between(0, 2);
         if (roll === 0)      { this.player._auraAtk = (this.player._auraAtk || 0) + 6; }
         else if (roll === 1) { this.player._auraDef = (this.player._auraDef || 0) + 3; }

@@ -261,29 +261,55 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     },
   },
 
-  WEAPON_UPGRADES: {
-    dual_shot:  { name: '雙重射擊', desc: '每次攻擊額外射出一顆偏角子彈', icon: '◈' },
-    rapid_fire: { name: '速射砲台', desc: '附加一座快速連射砲台', icon: '⚡', DAMAGE: 8,  RANGE: 220, RATE: 400,  TINT: 0xFFCC00 },
-    explosive:  { name: '爆破彈頭', desc: '命中時觸發小範圍爆炸', icon: '💥', AOE_RADIUS: 50 },
-    chain_bolt: { name: '連鎖閃電', desc: '命中後彈射到最近的另一個敵人', icon: '🔗' },
-    frost_bolt: { name: '冰霜箭',   desc: '命中使敵人減速 30%  持續 2 秒', icon: '❄' },
-    guardian:   { name: '守護砲台', desc: '繞玩家旋轉的護衛砲台', icon: '🛡', DAMAGE: 12, RANGE: 180, RATE: 1400, TINT: 0x4488FF, ORBIT_RADIUS: 48, ORBIT_SPEED: 0.0025 },
-
-    // ── Stat upgrades ─────────────────────────────────────────────────────
-    speed_up:   { name: '疾風步法', desc: '移動速度 +15', icon: '💨', AMOUNT: 15 },
-    defense_up: { name: '鐵甲強化', desc: '防禦力 +3（減少等量直接傷害）', icon: '🛡', AMOUNT: 3 },
-    attack_up:  { name: '武器磨礪', desc: '基礎攻擊力 +6', icon: '⚔', AMOUNT: 6 },
-    max_hp_up:  { name: '生命強化', desc: '最大生命值 +30，並恢復 30 HP', icon: '❤', AMOUNT: 30 },
-    heal:       { name: '急速回血', desc: '立即恢復 50 HP（不超過上限）', icon: '✚', AMOUNT: 50 },
-    gold_bonus: { name: '財富加持', desc: '立即獲得 60 金幣', icon: '💰', AMOUNT: 60 },
-
-    // ── Free building drops (chest only) ──────────────────────────────────
-    free_tower_lv2: { name: '★ 精英箭塔', desc: '免費放置一座升級版箭塔', icon: '🏹', type: 'free_building', buildType: 'tower_lv2' },
-    free_castle:    { name: '🏰 城堡',     desc: '免費放置城堡（射箭＋生兵＋召法師）', icon: '🏰', type: 'free_building', buildType: 'castle' },
-
-    // ── Soldier aura (chest) ───────────────────────────────────────────────
-    soldier_aura: { name: '士兵強化光環', desc: '隨機提升士兵的攻擊力、防禦力或移動速度', icon: '🚩' },
+  // ── Rarity tiers — weight out of 100, used by upgrade draw ─────────────────
+  UPGRADE_RARITIES: {
+    common:    { weight: 50, color: '#BBBBBB', label: '普通' },
+    rare:      { weight: 30, color: '#4499FF', label: '稀有' },
+    epic:      { weight: 16, color: '#CC55FF', label: '史詩' },
+    legendary: { weight: 4,  color: '#FFD700', label: '傳說' },
   },
+
+  // ── Upgrade pool ────────────────────────────────────────────────────────────
+  // maxLevel   : how many times this can be stacked (1 = one-time)
+  // rarities   : optional — limits which rarity tiers this entry appears in;
+  //              omit to allow all four tiers
+  // rarityBonus: attack power added per pick, scaled by rarity (placeholder values;
+  //              will be replaced with unique per-level effects later)
+  // Mechanical config fields (DAMAGE, RANGE, RATE, AOE_RADIUS, etc.) are preserved
+  // for runtime use and are independent of the rarity/level system.
+  UPGRADE_POOL: {
+    // ── 基礎武器 (all rarities) ────────────────────────────────────────────
+    hunter_bow:    { name: '獵弓',     icon: '🏹', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    war_sword:     { name: '戰士之刃', icon: '⚔',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    arcane_staff:  { name: '奧術法杖', icon: '🔮', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    iron_spear:    { name: '鐵槍',     icon: '🗡',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    royal_scepter: { name: '皇家權杖', icon: '✨', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+
+    // ── 攻擊升級 (all rarities) ────────────────────────────────────────────
+    dual_shot:  { name: '雙重射擊', icon: '◈',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    rapid_fire: { name: '速射砲台', icon: '⚡', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 }, DAMAGE: 8,  RANGE: 220, RATE: 400,  TINT: 0xFFCC00 },
+    explosive:  { name: '爆破彈頭', icon: '💥', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 }, AOE_RADIUS: 50 },
+    chain_bolt: { name: '連鎖閃電', icon: '🔗', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    frost_bolt: { name: '冰霜箭',   icon: '❄',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    guardian:   { name: '守護砲台', icon: '🛡', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 }, DAMAGE: 12, RANGE: 180, RATE: 1400, TINT: 0x4488FF, ORBIT_RADIUS: 48, ORBIT_SPEED: 0.0025 },
+
+    // ── 數值升級 (all rarities) ────────────────────────────────────────────
+    speed_up:     { name: '疾風步法',     icon: '💨', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    defense_up:   { name: '鐵甲強化',     icon: '🔰', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    attack_up:    { name: '武器磨礪',     icon: '⚔',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    max_hp_up:    { name: '生命強化',     icon: '❤',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    heal:         { name: '急速回血',     icon: '✚',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    gold_bonus:   { name: '財富加持',     icon: '💰', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    soldier_aura: { name: '士兵強化光環', icon: '🚩', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+
+    // ── 傳說限定 (legendary only, one-time) ───────────────────────────────
+    free_tower_lv2: { name: '★ 精英箭塔', icon: '🏹', maxLevel: 1, rarities: ['legendary'], type: 'free_building', buildType: 'tower_lv2' },
+    free_castle:    { name: '🏰 城堡',     icon: '🏰', maxLevel: 1, rarities: ['legendary'], type: 'free_building', buildType: 'castle'    },
+  },
+
+  // Backward-compat alias — runtime code that still reads WEAPON_UPGRADES
+  // will be migrated to UPGRADE_POOL; keep this until all references are updated.
+  get WEAPON_UPGRADES() { return this.UPGRADE_POOL; },
 
   SOLDIERS: {
     LEASH_RANGE:  200,   // max distance from player when deployed/rally mode
@@ -320,7 +346,7 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
   // STARTING_BONUS   : (optional) resources / free buildings / pre-applied upgrades
   //   gold / wood / stone / food : flat amounts added at game start
   //   freeBuildings  : string[]  — building types granted for free placement
-  //   upgrades       : string[]  — WEAPON_UPGRADES keys applied at game start
+  //   upgrades       : string[]  — UPGRADE_POOL keys applied at game start
   CHARACTERS: {
     warrior: {
       name:           '戰士',
