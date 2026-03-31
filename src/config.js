@@ -459,7 +459,7 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
       tagline:        '鐵壁防禦・近距爆發',
       lore:           '重甲加身，以鋼鐵意志守護村莊',
       HP:             180,
-      SPEED:          155,
+      SPEED:          190,
       DEFENSE_PCT:    0.30,
       TEXTURE:        'player_warrior',
       ACCENT:         0xCC3311,

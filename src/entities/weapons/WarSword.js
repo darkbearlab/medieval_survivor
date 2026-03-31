@@ -3,6 +3,7 @@ import { WeaponBase } from './WeaponBase.js';
 // Arc spread: 120° total cone (±60° from facing direction)
 const ARC_HALF_DEG = 60;
 const ARC_HALF_RAD = ARC_HALF_DEG * (Math.PI / 180);
+const SWING_MS     = 180; // duration of one arc sweep animation
 
 export class WarSword extends WeaponBase {
   constructor(scene, player) {
@@ -10,6 +11,7 @@ export class WarSword extends WeaponBase {
     this._comboCount  = 1;     // 1 → 2 at Lv2, 2 → 3 at Lv7
     this._knockback   = false; // enabled at Lv3
     this._spinSlash   = false; // enabled at Lv8 (360° after last combo swing)
+    this._swingIndex  = 0;     // increments each swing; even=CW, odd=CCW
     console.log('[WarSword] constructor called — weapon created');
   }
 
@@ -23,15 +25,15 @@ export class WarSword extends WeaponBase {
       this.player.x, this.player.y, target.x, target.y
     );
 
-    // Queue each swing in the combo with a 180 ms gap
     for (let i = 0; i < this._comboCount; i++) {
-      this.scene.time.delayedCall(i * 180, () => {
+      const swingIndex = this._swingIndex + i;
+      this.scene.time.delayedCall(i * (SWING_MS + 40), () => {
         if (this.player.isDead) return;
-        this._swing(this.player.x, this.player.y, faceAngle);
+        this._swing(this.player.x, this.player.y, faceAngle, swingIndex);
 
         // After the LAST swing, optionally do 360° spin
         if (this._spinSlash && i === this._comboCount - 1) {
-          this.scene.time.delayedCall(160, () => {
+          this.scene.time.delayedCall(SWING_MS + 40, () => {
             if (this.player.isDead) return;
             this._spinSlash360(this.player.x, this.player.y);
           });
@@ -39,17 +41,21 @@ export class WarSword extends WeaponBase {
       });
     }
 
-    return true; // always advance timer (swing happened even if no hit)
+    this._swingIndex += this._comboCount; // advance so next attack continues alternating
+    return true;
   }
 
   // ── Single arc swing ─────────────────────────────────────────────────────
 
-  _swing(x, y, faceAngle) {
-    console.log('[WarSword] _swing called');
-    const dmg = this.totalDamage;
-    this._drawArc(x, y, faceAngle);
+  _swing(x, y, faceAngle, swingIndex) {
+    console.log('[WarSword] _swing called, swingIndex=', swingIndex);
+    const dmg       = this.totalDamage;
+    const clockwise = (swingIndex % 2 === 0);
+
+    this._drawSweep(x, y, faceAngle, clockwise);
     this.scene.soundManager.play('player_shoot');
 
+    // Damage all enemies in the arc immediately
     this.scene.enemies.getChildren().forEach(sprite => {
       if (!sprite.active) return;
       const dist = Phaser.Math.Distance.Between(x, y, sprite.x, sprite.y);
@@ -94,29 +100,87 @@ export class WarSword extends WeaponBase {
 
   // ── Visuals ───────────────────────────────────────────────────────────────
 
-  _drawArc(x, y, faceAngle) {
-    const gfx        = this.scene.add.graphics().setDepth(15);
+  /**
+   * Animated sweep: the "blade" (bright line from centre) sweeps across the arc.
+   * A fading trail marks where the blade has passed.
+   * clockwise = true → sweep from (face - 60°) to (face + 60°)
+   * clockwise = false → sweep from (face + 60°) to (face - 60°)
+   */
+  _drawSweep(cx, cy, faceAngle, clockwise) {
     const r          = this.range;
-    const startAngle = faceAngle - ARC_HALF_RAD;
-    const endAngle   = faceAngle + ARC_HALF_RAD;
+    const startAngle = clockwise
+      ? faceAngle - ARC_HALF_RAD
+      : faceAngle + ARC_HALF_RAD;
+    const endAngle   = clockwise
+      ? faceAngle + ARC_HALF_RAD
+      : faceAngle - ARC_HALF_RAD;
+    // anticlockwise parameter for Phaser arc: opposite of our clockwise flag
+    const acw        = !clockwise;
 
-    // Filled pie slice
-    gfx.fillStyle(0xFF6633, 0.45);
-    gfx.beginPath();
-    gfx.moveTo(x, y);
-    gfx.arc(x, y, r, startAngle, endAngle, false);
-    gfx.closePath();
-    gfx.fillPath();
-
-    // Bright arc edge
-    gfx.lineStyle(3, 0xFFAA55, 0.85);
-    gfx.beginPath();
-    gfx.arc(x, y, r * 0.9, startAngle, endAngle, false);
-    gfx.strokePath();
+    const gfx   = this.scene.add.graphics().setDepth(15);
+    const state = { t: 0 };
 
     this.scene.tweens.add({
-      targets: gfx, alpha: 0, duration: 220,
-      onComplete: () => gfx.destroy(),
+      targets:  state,
+      t:        1,
+      duration: SWING_MS,
+      ease:     'Sine.easeOut',
+      onUpdate: () => {
+        gfx.clear();
+        const t       = state.t;
+        const curAngle = startAngle + (endAngle - startAngle) * t;
+
+        // --- Trail (filled swept sector) ---
+        // Fades from opaque at root to transparent at tip, and dims as t approaches 1
+        gfx.fillStyle(0xFF5500, 0.35 * (1 - t * 0.4));
+        gfx.beginPath();
+        gfx.moveTo(cx, cy);
+        gfx.arc(cx, cy, r, startAngle, curAngle, acw);
+        gfx.closePath();
+        gfx.fillPath();
+
+        // --- Arc edge of the trail (soft glow) ---
+        if (t > 0.05) {
+          gfx.lineStyle(2, 0xFF8833, 0.5 * (1 - t));
+          gfx.beginPath();
+          gfx.arc(cx, cy, r * 0.85, startAngle, curAngle, acw);
+          gfx.strokePath();
+        }
+
+        // --- Blade leading edge (bright line from centre to arc) ---
+        const bx = cx + Math.cos(curAngle) * r;
+        const by = cy + Math.sin(curAngle) * r;
+        // outer bright tip line
+        gfx.lineStyle(3, 0xFFFFCC, 0.95);
+        gfx.beginPath();
+        gfx.moveTo(cx + Math.cos(curAngle) * r * 0.15, cy + Math.sin(curAngle) * r * 0.15);
+        gfx.lineTo(bx, by);
+        gfx.strokePath();
+        // inner handle line (slightly dimmer)
+        gfx.lineStyle(2, 0xFFDD88, 0.6);
+        gfx.beginPath();
+        gfx.moveTo(cx, cy);
+        gfx.lineTo(cx + Math.cos(curAngle) * r * 0.2, cy + Math.sin(curAngle) * r * 0.2);
+        gfx.strokePath();
+
+        // --- Bright tip flash (small circle at blade end) ---
+        gfx.fillStyle(0xFFFFFF, 0.7 * (1 - t));
+        gfx.fillCircle(bx, by, 4);
+      },
+      onComplete: () => {
+        // Quick flash-out of the full arc silhouette
+        gfx.clear();
+        gfx.fillStyle(0xFF5500, 0.12);
+        gfx.beginPath();
+        gfx.moveTo(cx, cy);
+        gfx.arc(cx, cy, r, startAngle, endAngle, acw);
+        gfx.closePath();
+        gfx.fillPath();
+        this.scene.tweens.add({
+          targets: gfx, alpha: 0, duration: 90,
+          onComplete: () => gfx.destroy(),
+        });
+      },
     });
   }
 
