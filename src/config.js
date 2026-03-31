@@ -298,7 +298,23 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
         { label: '蛻變：長空穿射', effect: 'transform', desc: '射程覆蓋全地圖，箭矢穿透所有目標' },                    // Lv10
       ],
     },
-    war_sword:     { name: '戰士之刃', icon: '⚔',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    war_sword: {
+      name: '戰士之刃', icon: '⚔', maxLevel: 10,
+      rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 },
+      levels: [
+        { label: '攻擊力提升',    effect: 'atk',        values: { common: 8,  rare: 14, epic: 20,  legendary: 30  } }, // Lv1
+        { label: '二連斬',        effect: 'combo_2',    desc: '每次攻擊揮砍兩下' },                                    // Lv2
+        { label: '擊退敵人',      effect: 'knockback',  desc: '攻擊時將敵人擊退' },                                    // Lv3
+        { label: '攻擊範圍提升',  effect: 'range',      values: { common: 20, rare: 30, epic: 45,  legendary: 60  } }, // Lv4
+        { label: '射程提升',      effect: 'range',      values: { common: 20, rare: 30, epic: 45,  legendary: 60  } }, // Lv5
+        { label: '攻擊力提升',    effect: 'atk',        values: { common: 10, rare: 16, epic: 24,  legendary: 35  } }, // Lv6
+        { label: '三連斬',        effect: 'combo_3',    desc: '每次攻擊揮砍三下' },                                    // Lv7
+        { label: '旋風斬',        effect: 'spin_slash', desc: '三連斬後追加一個360度的斬擊' },                         // Lv8
+        { label: '攻擊力大幅提升', effect: 'atk',       values: { common: 16, rare: 26, epic: 40,  legendary: 60  } }, // Lv9
+        { label: '蛻變：無雙劍舞', effect: 'transform', desc: '大幅提升攻擊力與移動速度',
+          values: { common: 30, rare: 50, epic: 70, legendary: 100 }, speedBonus: 25 },                                // Lv10
+      ],
+    },
     arcane_staff:  { name: '奧術法杖', icon: '🔮', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
     iron_spear:    { name: '鐵槍',     icon: '🗡',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
     royal_scepter: { name: '皇家權杖', icon: '✨', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
@@ -312,11 +328,83 @@ export const CONFIG = { // mutable — runtime balance tweaks modify this direct
     guardian:   { name: '守護砲台', icon: '🛡', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 }, DAMAGE: 12, RANGE: 180, RATE: 1400, TINT: 0x4488FF, ORBIT_RADIUS: 48, ORBIT_SPEED: 0.0025 },
 
     // ── 數值升級 (all rarities) ────────────────────────────────────────────
-    speed_up:     { name: '疾風步法',     icon: '💨', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
-    defense_up:   { name: '鐵甲強化',     icon: '🔰', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
-    attack_up:    { name: '武器磨礪',     icon: '⚔',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
-    max_hp_up:    { name: '生命強化',     icon: '❤',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
-    heal:         { name: '急速回血',     icon: '✚',  maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
+    // values = amount added to the named stat per pick (rarity-scaled).
+    // No attackBonus side-effect — each upgrade only touches its own stat.
+    speed_up: {
+      name: '疾風步法', icon: '💨', maxLevel: 10,
+      levels: [
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv1
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv2
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv3
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv4
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv5
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv6
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv7
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv8
+        { label: '移動速度提升', effect: 'speed', values: { common: 8,  rare: 12, epic: 18, legendary: 25 } }, // Lv9
+        { label: '蛻變：疾風化形', effect: 'transform', desc: '移動速度大幅提升，並獲得衝刺殘影效果（placeholder）' }, // Lv10
+      ],
+    },
+    defense_up: {
+      name: '鐵甲強化', icon: '🔰', maxLevel: 10,
+      levels: [
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv1
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv2
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv3
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv4
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv5
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv6
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv7
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv8
+        { label: '防禦力提升', effect: 'defense', values: { common: 2, rare: 3, epic: 5, legendary: 7 } }, // Lv9
+        { label: '蛻變：不壞之身', effect: 'transform', desc: '防禦力大幅提升，並獲得受擊無敵幀（placeholder）' }, // Lv10
+      ],
+    },
+    attack_up: {
+      name: '武器磨礪', icon: '⚔', maxLevel: 10,
+      levels: [
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv1
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv2
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv3
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv4
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv5
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv6
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv7
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv8
+        { label: '攻擊力提升', effect: 'atk', values: { common: 4, rare: 7, epic: 11, legendary: 16 } }, // Lv9
+        { label: '蛻變：破甲之刃', effect: 'transform', desc: '攻擊力大幅提升，並獲得忽視敵人防禦效果（placeholder）' }, // Lv10
+      ],
+    },
+    max_hp_up: {
+      name: '生命強化', icon: '❤', maxLevel: 10,
+      levels: [
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv1
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv2
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv3
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv4
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv5
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv6
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv7
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv8
+        { label: '最大HP提升', effect: 'max_hp', values: { common: 15, rare: 25, epic: 40, legendary: 60 } }, // Lv9
+        { label: '蛻變：不死之軀', effect: 'transform', desc: '最大HP大幅提升，並在瀕死時觸發一次無敵（placeholder）' }, // Lv10
+      ],
+    },
+    regen: {
+      name: '自然恢復', icon: '🌿', maxLevel: 10,
+      levels: [
+        { label: '獲得生命回復', effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv1
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv2
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv3
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv4
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv5
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv6
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv7
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv8
+        { label: '回復量提升',   effect: 'regen', values: { common: 0.5, rare: 1.0, epic: 1.5, legendary: 2.5 } }, // Lv9
+        { label: '蛻變：生命洪流', effect: 'transform', desc: '回復速率大幅提升，並在低血量時加速回復（placeholder）' }, // Lv10
+      ],
+    },
     gold_bonus:   { name: '財富加持',     icon: '💰', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
     soldier_aura: { name: '士兵強化光環', icon: '🚩', maxLevel: 10, rarityBonus: { common: 3, rare: 5, epic: 8, legendary: 12 } },
 

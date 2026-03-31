@@ -1,4 +1,4 @@
-import { CONFIG } from '../config.js';
+import { CONFIG }   from '../config.js';
 import { EventBus } from '../utils/EventBus.js';
 
 export class Player {
@@ -21,19 +21,17 @@ export class Player {
 
     // Flat bonuses (added by buildings at runtime)
     this.defense     = 0;   // flat damage subtraction (blacksmith)
-    this.attackBonus = 0;   // flat damage addition (training ground)
 
     // Character-specific stats (survivability — stays on character)
     this.defensePct  = charCfg.DEFENSE_PCT || 0;
     this.speed       = charCfg.SPEED;
 
-    // Weapon-derived stats (attack style — comes from the equipped weapon)
-    this.weaponKey   = weapKey;
+    // damageMult is a character multiplier applied to all equipped weapons
+    this.weaponKey   = weapKey;    // starting weapon key (kept for reference/UI)
     this.damageMult  = weapCfg.DAMAGE_MULT || 1.0;
-    this.attackRange = weapCfg.RANGE;
-    this.attackRate  = weapCfg.RATE;
-    this.aoeOnHit    = weapCfg.AOE        || false;
-    this.aoeRadius   = weapCfg.AOE_RADIUS || 0;
+
+    // Equipped weapons — GameScene populates this after Player is created
+    this.equippedWeapons = [];
   }
 
   update(cursors) {

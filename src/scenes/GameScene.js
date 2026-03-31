@@ -13,6 +13,11 @@ import { WeaponMount }      from '../entities/WeaponMount.js';
 import { Chest }            from '../entities/Chest.js';
 import { SoundManager }     from '../utils/SoundManager.js';
 import { Soldier }          from '../entities/Soldier.js';
+import { HunterBow }        from '../entities/weapons/HunterBow.js';
+import { WarSword }         from '../entities/weapons/WarSword.js';
+import { ArcaneStaff }      from '../entities/weapons/ArcaneStaff.js';
+import { IronSpear }        from '../entities/weapons/IronSpear.js';
+import { RoyalScepter }     from '../entities/weapons/RoyalScepter.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -296,8 +301,8 @@ export class GameScene extends Phaser.Scene {
     // Periodic safety recalc (handles edge cases like building destruction timing)
     this._bonusRecalcTimer = 0;
 
-    // --- Attack timing ---
-    this.nextAttackTime = 0;
+    // --- Equip starting weapon ---
+    this._equipStartingWeapon();
 
     // --- Launch HUD scene ---
     this.scene.launch('UIScene');
@@ -379,6 +384,41 @@ export class GameScene extends Phaser.Scene {
         this.pathFinder.setBlocked(wx, wy, true);
       }
     }
+  }
+
+  // ─────────────────────────────────────────────
+  //  Weapon management
+  // ─────────────────────────────────────────────
+
+  _weaponClassFor(key) {
+    const map = {
+      hunter_bow:    HunterBow,
+      war_sword:     WarSword,
+      arcane_staff:  ArcaneStaff,
+      iron_spear:    IronSpear,
+      royal_scepter: RoyalScepter,
+    };
+    return map[key] || null;
+  }
+
+  _equipStartingWeapon() {
+    const key = this.player.weaponKey;
+    const Cls = this._weaponClassFor(key);
+    console.log('[GameScene] _equipStartingWeapon — characterKey=', this.characterKey, 'weaponKey=', key, 'ClassFound=', !!Cls);
+    if (Cls) this.player.equippedWeapons.push(new Cls(this, this.player));
+    console.log('[GameScene] equippedWeapons after equip:', this.player.equippedWeapons.map(w => w.key));
+  }
+
+  // Equip a new weapon by key (if not already equipped).
+  // If already equipped, route to that weapon's applyLevel instead.
+  _equipOrUpgradeWeapon(key, rarity) {
+    const existing = this.player.equippedWeapons.find(w => w.key === key);
+    if (existing) return existing; // upgrade handled separately via applyLevel
+    const Cls = this._weaponClassFor(key);
+    if (!Cls) return null;
+    const weapon = new Cls(this, this.player);
+    this.player.equippedWeapons.push(weapon);
+    return weapon;
   }
 
   // ─────────────────────────────────────────────
@@ -523,39 +563,17 @@ export class GameScene extends Phaser.Scene {
     if (!isPiercing) projectile.destroy();
 
     if (fp && this.player) {
-      if (this.player.aoeOnHit)        this._triggerPlayerAoE(px, py, Math.round(dmg * 0.65));
+      // Route weapon-specific on-hit effects to the weapon that fired this projectile
+      const weaponKey = projectile.getData('weaponKey');
+      const weapon    = weaponKey
+        ? this.player.equippedWeapons.find(w => w.key === weaponKey)
+        : null;
+      if (weapon) weapon.onHit(px, py, entity, dmg, projAngle, isPiercing, isSplit);
+
+      // Global modifiers (apply to all player projectiles)
       if (this.player._explosiveShots) this._triggerMountExplosion(px, py, Math.round(dmg * 0.5), this.player._explosiveShots);
       if (this.player._chainBolt && entity && !entity.dead) this._chainBoltHit(entity, dmg, this.player._chainBolt);
       if (this.player._frostBolt && entity && !entity.dead) this._applyFrost(entity, this.player._frostBolt);
-      if (this.player.weaponKey === 'royal_scepter' && entity && !entity.dead && Math.random() < 0.20)
-        this._applyFrost(entity, 1);
-
-      // Split arrows (hunter_bow) — triggers on normal hit AND each piercing hit.
-      // isSplit flag (read before destroy) prevents recursive split chains.
-      const splitCount = this.player._bowSplitCount || 0;
-      if (splitCount > 0 && !isSplit) {
-        this._triggerBowSplit(px, py, Math.round(dmg * 0.7), splitCount, projAngle);
-      }
-    }
-  }
-
-  // Fire `count` sub-arrows fanning forward from the hit point.
-  // Each arrow spreads randomly within ±SPREAD_HALF radians of the original direction.
-  // Spawn point is offset forward by OFFSET px so arrows don't immediately re-hit
-  // the enemy that was just struck.
-  _triggerBowSplit(x, y, damage, count, baseAngle = 0) {
-    const SPREAD_HALF = Math.PI * (40 / 180); // ±40°
-    const OFFSET      = 32; // px past the hit point, past the enemy's physics body
-    const sx = x + Math.cos(baseAngle) * OFFSET;
-    const sy = y + Math.sin(baseAngle) * OFFSET;
-    for (let i = 0; i < count; i++) {
-      const offset = (Math.random() * 2 - 1) * SPREAD_HALF;
-      const a = baseAngle + offset;
-      const fakeTarget = {
-        x: sx + Math.cos(a) * 500,
-        y: sy + Math.sin(a) * 500,
-      };
-      this._fireProjectile(sx, sy, fakeTarget, damage, true, 0xAADDFF, { isSplit: true });
     }
   }
 
@@ -749,19 +767,12 @@ export class GameScene extends Phaser.Scene {
     if (tint !== null) {
       proj.setTint(tint);
     } else if (opts.piercing) {
-      proj.setTint(0xFFEE44);   // piercing — golden
-    } else if (fromPlayer && this.player && this.player.aoeOnHit) {
-      proj.setTint(0xCC44FF);   // mage — purple
-    } else if (fromPlayer && this.player && this.player.weaponKey === 'royal_scepter') {
-      proj.setTint(0xFF88CC);   // princess — pink
-    } else if (fromPlayer && this.player && this.player.weaponKey === 'iron_spear') {
-      proj.setTint(0xCCDDEE);   // banner — silvery steel
-    } else if (fromPlayer && this.player && this.player.defensePct > 0) {
-      proj.setTint(0xFF6633);   // warrior — red
+      proj.setTint(0xFFEE44);   // piercing — golden (iron_spear / hunter_bow Lv10)
     }
     proj.setData('isProjectile', true);
     proj.setData('fromPlayer', fromPlayer);
     proj.setData('damage', damage);
+    if (opts.weaponKey) proj.setData('weaponKey', opts.weaponKey);
     if (opts.piercing) {
       proj.setData('piercing', true);
       proj.setData('hitEnemies', new Set());
@@ -1059,31 +1070,9 @@ export class GameScene extends Phaser.Scene {
     // Soldier aura visual + buff dot indicators
     this._updateAuraVisual(delta);
 
-    // Auto-attack nearest enemy — uses character-specific range, rate, damage
-    if (!this.player.isDead && time > this.nextAttackTime) {
-      const target = this._findNearestEnemy(
-        this.player.x,
-        this.player.y,
-        this.player.attackRange
-      );
-      if (target) {
-        const dmg       = Math.round((CONFIG.PROJECTILE.DAMAGE + this.player.attackBonus) * this.player.damageMult);
-        const isPiercing = !!(this.player._piercingShot);
-        this._fireProjectile(this.player.x, this.player.y, target, dmg, true, null, { piercing: isPiercing });
-        this.soundManager.play('player_shoot');
-        // dual_shot: fire extra projectiles at small angle offsets
-        const extras = this.player._extraShots || 0;
-        for (let s = 0; s < extras; s++) {
-          const offsetAngle = ((s % 2 === 0 ? 1 : -1) * (Math.ceil((s + 1) / 2) * 18)) * (Math.PI / 180);
-          const baseAngle   = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
-          const fakeTarget  = {
-            x: this.player.x + Math.cos(baseAngle + offsetAngle) * 400,
-            y: this.player.y + Math.sin(baseAngle + offsetAngle) * 400,
-          };
-          this._fireProjectile(this.player.x, this.player.y, fakeTarget, Math.round(dmg * 0.8), true, null, { piercing: isPiercing });
-        }
-        this.nextAttackTime = time + this.player.attackRate;
-      }
+    // Each equipped weapon handles its own attack timer and logic
+    for (const weapon of this.player.equippedWeapons) {
+      weapon.update(time, delta);
     }
 
     // Enemy projectiles vs player (manual distance check — avoids physics overlap bug)
@@ -1173,6 +1162,19 @@ export class GameScene extends Phaser.Scene {
     // Farm regen
     for (const farm of this.buildingSystem.farms) {
       if (!farm.dead) farm.update(delta);
+    }
+
+    // Player natural regen (自然恢復 upgrade)
+    if (!this.player.isDead && this.player._regenRate > 0) {
+      this._regenAccum = (this._regenAccum || 0) + delta;
+      if (this._regenAccum >= 1000) {
+        this._regenAccum -= 1000;
+        const healed = Math.min(this.player._regenRate, this.player.maxHp - this.player.hp);
+        if (healed > 0) {
+          this.player.hp += healed;
+          EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
+        }
+      }
     }
 
     // Auto-collect
@@ -1552,9 +1554,21 @@ export class GameScene extends Phaser.Scene {
     const newLevel  = Math.min(prevLevel + 1, wu.maxLevel);
     this.player._upgradeLevels[key] = newLevel;
 
-    // ── Weapons with per-level definitions ───────────────────────────────────
-    // If the upgrade pool entry has a `levels` array, apply its specific effect
-    // for this level and skip the generic rarityBonus block.
+    // ── Weapon keys (hunter_bow, war_sword, …): equip if new, then level up ──
+    const WEAPON_KEYS = ['hunter_bow', 'war_sword', 'arcane_staff', 'iron_spear', 'royal_scepter'];
+    if (WEAPON_KEYS.includes(key)) {
+      // Equip the weapon if not already carried
+      const existing = this.player.equippedWeapons.find(w => w.key === key);
+      if (!existing) this._equipOrUpgradeWeapon(key, rarity);
+      // Apply the level effect to the weapon
+      if (wu.levels) {
+        const weapon = this.player.equippedWeapons.find(w => w.key === key);
+        if (weapon) weapon.applyLevel(wu.levels[newLevel - 1], rarity, newLevel);
+      }
+      return;
+    }
+
+    // ── Stat upgrades with per-level definitions ─────────────────────────────
     if (wu.levels) {
       this._applyWeaponLevelEffect(key, wu.levels[newLevel - 1], rarity, newLevel);
       return;
@@ -1562,11 +1576,7 @@ export class GameScene extends Phaser.Scene {
 
     // ── Generic rarityBonus (placeholder for upgrades not yet per-level) ─────
     const bonus = (wu.rarityBonus && wu.rarityBonus[rarity]) || 0;
-    this.player.attackBonus = (this.player.attackBonus || 0) + bonus;
-
-    if (newLevel === wu.maxLevel && wu.maxLevel === 10) {
-      this.player.attackBonus += 20; // placeholder transform burst
-    }
+    if (newLevel === wu.maxLevel && wu.maxLevel === 10) bonus + 20; // placeholder
 
     // ── Mechanical effects (one trigger per stack, rarity-independent) ───────
     switch (key) {
@@ -1591,23 +1601,9 @@ export class GameScene extends Phaser.Scene {
         this._weaponMounts.push(g1, g2);
         break;
       }
-      // Stat upgrades — rarity bonus already added above via attackBonus placeholder;
-      // real per-stat amounts will be implemented during per-weapon design pass.
-      case 'speed_up':
-        this.player.speed += 15;
-        break;
-      case 'defense_up':
-        this.player.defense += 3;
-        break;
-      case 'max_hp_up':
-        this.player.maxHp += 30;
-        this.player.hp = Math.min(this.player.hp + 30, this.player.maxHp);
-        EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
-        break;
-      case 'heal':
-        this.player.hp = Math.min(this.player.hp + 50, this.player.maxHp);
-        EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
-        break;
+      // Stat upgrades (speed_up / defense_up / attack_up / max_hp_up / regen) all
+      // have `levels` arrays in config and are handled by _applyStatLevel above,
+      // so they will never reach this switch.  Cases removed to avoid confusion.
       case 'gold_bonus':
         this.economy.add('gold', 60);
         EventBus.emit('resources_updated', this.economy.resources);
@@ -1648,34 +1644,40 @@ export class GameScene extends Phaser.Scene {
       case 'hunter_bow':
         this._applyHunterBowLevel(lvCfg, rarity, newLevel);
         break;
+      case 'speed_up':
+      case 'defense_up':
+      case 'attack_up':
+      case 'max_hp_up':
+      case 'regen':
+        this._applyStatLevel(key, lvCfg, rarity);
+        break;
       // Future weapons: add cases here as each weapon is designed.
     }
   }
 
-  _applyHunterBowLevel(lvCfg, rarity, newLevel) {
+  _applyStatLevel(key, lvCfg, rarity) {
     const val = (lvCfg.values && lvCfg.values[rarity]) || 0;
     switch (lvCfg.effect) {
+      case 'speed':
+        this.player.speed += val;
+        break;
+      case 'defense':
+        this.player.defense = (this.player.defense || 0) + val;
+        break;
       case 'atk':
-        this.player.attackBonus = (this.player.attackBonus || 0) + val;
+        // Broadcast to all equipped weapons
+        for (const w of this.player.equippedWeapons) w.applyGlobalBonus('atk', val);
         break;
-      case 'rate':
-        // Reduce attack interval; floor at 200 ms to prevent absurdly fast shots
-        this.player.attackRate = Math.max(200, this.player.attackRate - val);
+      case 'max_hp':
+        this.player.maxHp += val;
+        this.player.hp = Math.min(this.player.hp + val, this.player.maxHp);
+        EventBus.emit('player_hp_changed', this.player.hp, this.player.maxHp);
         break;
-      case 'split':
-        // Accumulate split arrow count; each stack adds `val` sub-arrows on hit
-        this.player._bowSplitCount = (this.player._bowSplitCount || 0) + val;
+      case 'regen':
+        this.player._regenRate = (this.player._regenRate || 0) + val;
         break;
       case 'transform':
-        // Lv10 蛻變：射程全地圖 + 穿透（保留所有已累積的攻擊力/攻速/分裂）
-        this.player.attackRange   = 9999;
-        this.player._piercingShot = true;
-        // Flash the player sprite gold to signal the transform
-        this.player.sprite.setTint(0xFFEE44);
-        this.time.delayedCall(800, () => {
-          if (this.player.sprite && this.player.sprite.active)
-            this.player.sprite.clearTint();
-        });
+        // Placeholder — per-stat transforms to be designed later
         break;
     }
   }
